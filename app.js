@@ -3,7 +3,7 @@
 
 /*
  * Adventure Planner
- * Activity browser and completion tracking
+ * Activity management, browser and completion tracking
  */
 
 const AdventurePlanner = (() => {
@@ -64,6 +64,16 @@ const AdventurePlanner = (() => {
         }
     }
 
+    function getActivities() {
+        const original = window.ADVENTURE_ACTIVITIES || [];
+        const custom = data.activities || [];
+
+        return [
+            ...original,
+            ...custom
+        ];
+    }
+
     function isCompleted(activityId) {
         return data.completedActivities.includes(activityId);
     }
@@ -79,24 +89,244 @@ const AdventurePlanner = (() => {
         saveData();
     }
 
+    function addActivity(activity) {
+        const id = `custom-${Date.now()}`;
+
+        const newActivity = {
+            ...activity,
+            id,
+            status: "not-visited",
+            custom: true
+        };
+
+        data.activities.push(newActivity);
+
+        if (saveData()) {
+            return newActivity;
+        }
+
+        data.activities.pop();
+        return null;
+    }
+
     return {
         config: CONFIG,
         data,
         saveData,
+        getActivities,
         isCompleted,
-        toggleCompleted
+        toggleCompleted,
+        addActivity
     };
 
 })();
 
 
 /*
+ * Add activity form
+ */
+
+function createAddActivityForm() {
+
+    const section = document.createElement("section");
+    section.className = "feature";
+    section.id = "add-activity";
+
+    const heading = document.createElement("h2");
+    heading.textContent = "Add an Adventure";
+
+    const introduction = document.createElement("p");
+    introduction.textContent =
+        "Add your own discoveries and experiences to your personal database.";
+
+    const form = document.createElement("form");
+    form.className = "activity-form";
+
+    function createInput(labelText, name, type = "text", required = true) {
+
+        const wrapper = document.createElement("label");
+        wrapper.className = "form-field";
+
+        const label = document.createElement("span");
+        label.textContent = labelText;
+
+        const input = document.createElement("input");
+        input.type = type;
+        input.name = name;
+        input.required = required;
+
+        if (type === "number") {
+            input.min = "0";
+        }
+
+        wrapper.append(label, input);
+        form.appendChild(wrapper);
+
+        return input;
+    }
+
+    function createSelect(labelText, name, options) {
+
+        const wrapper = document.createElement("label");
+        wrapper.className = "form-field";
+
+        const label = document.createElement("span");
+        label.textContent = labelText;
+
+        const select = document.createElement("select");
+        select.name = name;
+        select.required = true;
+
+        options.forEach(option => {
+            const element = document.createElement("option");
+            element.value = option.value;
+            element.textContent = option.label;
+            select.appendChild(element);
+        });
+
+        wrapper.append(label, select);
+        form.appendChild(wrapper);
+
+        return select;
+    }
+
+    createInput("Activity name", "name");
+    createInput("Destination", "destination");
+    createInput("Region", "region");
+
+    const description = document.createElement("textarea");
+    description.name = "description";
+    description.placeholder = "Describe the experience...";
+    description.required = true;
+
+    const descriptionWrapper = document.createElement("label");
+    descriptionWrapper.className = "form-field";
+
+    const descriptionLabel = document.createElement("span");
+    descriptionLabel.textContent = "Description";
+
+    descriptionWrapper.append(descriptionLabel, description);
+    form.appendChild(descriptionWrapper);
+
+    const categoryInput = createInput(
+        "Categories (comma separated)",
+        "category"
+    );
+
+    createSelect("Cost", "cost", [
+        { value: "free", label: "Free" },
+        { value: "under25", label: "Under $25" },
+        { value: "under50", label: "Under $50" },
+        { value: "under100", label: "Under $100" },
+        { value: "variable", label: "Variable / unknown" }
+    ]);
+
+    createInput("Estimated cost per person ($)", "estimatedCost", "number", false);
+    createInput("Duration (hours)", "durationHours", "number");
+
+    createSelect("Dog access", "dogPolicy", [
+        { value: "friendly", label: "Dog-friendly" },
+        { value: "verify", label: "Needs verification" },
+        { value: "restricted", label: "Dogs not permitted" }
+    ]);
+
+    createSelect("Indoor or outdoor", "indoorOutdoor", [
+        { value: "outdoor", label: "Outdoor" },
+        { value: "indoor", label: "Indoor" },
+        { value: "mixed", label: "Both" }
+    ]);
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.textContent = "Add to My Adventures";
+    submit.className = "add-activity-button";
+
+    const message = document.createElement("p");
+    message.id = "add-activity-message";
+
+    form.append(submit, message);
+
+    form.addEventListener("submit", event => {
+
+        event.preventDefault();
+
+        const formData = new FormData(form);
+
+        const estimatedCostValue = formData.get("estimatedCost");
+
+        const activity = {
+            name: formData.get("name").trim(),
+            destination: formData.get("destination").trim(),
+            region: formData.get("region").trim(),
+            description: formData.get("description").trim(),
+            category: categoryInput.value
+                .split(",")
+                .map(value => value.trim().toLowerCase().replaceAll(" ", "-"))
+                .filter(Boolean),
+            cost: formData.get("cost"),
+            estimatedCost: estimatedCostValue === ""
+                ? null
+                : Number(estimatedCostValue),
+            durationHours: Number(formData.get("durationHours")),
+            dogPolicy: formData.get("dogPolicy"),
+            indoorOutdoor: formData.get("indoorOutdoor"),
+            overnightSuitable: false
+        };
+
+        if (
+            !activity.name ||
+            !activity.destination ||
+            !activity.region ||
+            !activity.description ||
+            !activity.category.length ||
+            !Number.isFinite(activity.durationHours) ||
+            activity.durationHours <= 0 ||
+            (
+                activity.estimatedCost !== null &&
+                (
+                    !Number.isFinite(activity.estimatedCost) ||
+                    activity.estimatedCost < 0
+                )
+            )
+        ) {
+            message.textContent = "Please check all required fields.";
+            return;
+        }
+
+        const added = AdventurePlanner.addActivity(activity);
+
+        if (added) {
+            message.textContent =
+                `${added.name} has been added successfully.`;
+
+            form.reset();
+
+            renderActivityBrowser();
+        } else {
+            message.textContent =
+                "Unable to save this activity. Check your browser storage.";
+        }
+    });
+
+    section.append(heading, introduction, form);
+
+    document.querySelector("main").appendChild(section);
+}
+
+
+/*
  * Activity browser and filters
  */
 
-function createActivityBrowser() {
+function renderActivityBrowser() {
 
-    const activities = window.ADVENTURE_ACTIVITIES || [];
+    const existing = document.getElementById("activity-browser");
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const activities = AdventurePlanner.getActivities();
 
     const section = document.createElement("section");
     section.className = "feature";
@@ -113,12 +343,12 @@ function createActivityBrowser() {
     search.type = "search";
     search.id = "activity-search";
     search.placeholder = "Search activities or destinations...";
-    search.setAttribute("aria-label", "Search activities or destinations");
 
     const filters = document.createElement("div");
     filters.className = "activity-filters";
 
     function createFilter(labelText, options, name) {
+
         const wrapper = document.createElement("label");
         wrapper.className = "filter-field";
 
@@ -242,11 +472,7 @@ function createActivityBrowser() {
         results
     );
 
-    const main = document.querySelector("main");
-
-    if (main) {
-        main.appendChild(section);
-    }
+    document.querySelector("main").appendChild(section);
 
     function renderActivities() {
 
@@ -299,13 +525,8 @@ function createActivityBrowser() {
 
                 const limit = Number(selectedBudget);
 
-                if (limit === 0 && activity.estimatedCost !== 0) {
-                    return false;
-                }
-
-                if (limit > 0 && activity.estimatedCost >= limit) {
-                    return false;
-                }
+                if (limit === 0 && activity.estimatedCost !== 0) return false;
+                if (limit > 0 && activity.estimatedCost >= limit) return false;
             }
 
             if (
@@ -320,15 +541,8 @@ function createActivityBrowser() {
 
             const completed = AdventurePlanner.isCompleted(activity.id);
 
-            if (
-                selectedCompletion === "complete" &&
-                !completed
-            ) return false;
-
-            if (
-                selectedCompletion === "incomplete" &&
-                completed
-            ) return false;
+            if (selectedCompletion === "complete" && !completed) return false;
+            if (selectedCompletion === "incomplete" && completed) return false;
 
             return true;
         });
@@ -398,7 +612,7 @@ function createActivityBrowser() {
 
             completeButton.addEventListener("click", () => {
                 AdventurePlanner.toggleCompleted(activity.id);
-                renderActivities();
+                renderActivityBrowser();
             });
 
             card.append(
@@ -434,12 +648,17 @@ function createActivityBrowser() {
 }
 
 
+/*
+ * Initialise application
+ */
+
 document.addEventListener("DOMContentLoaded", () => {
 
     console.log(
         `${AdventurePlanner.config.appName} initialised successfully.`
     );
 
-    createActivityBrowser();
+    renderActivityBrowser();
+    createAddActivityForm();
 
 });
