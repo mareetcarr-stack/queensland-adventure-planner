@@ -3,21 +3,24 @@
 
 /*
  * Discover Adventures
- * Recommends uncompleted experiences from the local activity database.
+ * Recommends uncompleted experiences from the activity database.
  */
 
 (() => {
     function initialiseDiscover() {
+        if (typeof AdventurePlanner === "undefined") return;
+
         const feature = [...document.querySelectorAll("main > .feature")]
             .find(section =>
                 section.querySelector("h3")?.textContent.includes("Discover Adventures")
             );
 
-        if (!feature || !window.AdventurePlanner) return;
+        if (!feature) return;
 
         feature.querySelector(".status")?.remove();
 
         const intro = feature.querySelector("p");
+
         if (intro) {
             intro.textContent =
                 "Find something different to do. Completed experiences are excluded, but you can discover new activities in places you've visited before.";
@@ -49,6 +52,7 @@
 
             label.append(caption, select);
             controls.appendChild(label);
+
             return select;
         }
 
@@ -179,6 +183,7 @@
 
             complete.addEventListener("click", () => {
                 AdventurePlanner.toggleCompleted(activity.id);
+
                 render(false);
 
                 if (typeof renderActivityBrowser === "function") {
@@ -191,6 +196,7 @@
             });
 
             card.append(heading, location, description, details, complete);
+
             return card;
         }
 
@@ -203,6 +209,7 @@
                 const empty = document.createElement("p");
                 empty.textContent =
                     "No uncompleted experiences match these filters. Try another area or category, or add more activities to your collection.";
+
                 results.appendChild(empty);
                 return;
             }
@@ -252,4 +259,3 @@
 
     document.addEventListener("DOMContentLoaded", initialiseDiscover);
 })();
-
