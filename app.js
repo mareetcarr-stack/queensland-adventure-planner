@@ -3,7 +3,7 @@
 
 /*
  * Adventure Planner
- * Activity management, browser and completion tracking
+ * Activity management, browser, completion tracking and backups
  */
 
 const AdventurePlanner = (() => {
@@ -111,9 +111,7 @@ const AdventurePlanner = (() => {
             activity => activity.id === activityId
         );
 
-        if (index === -1) {
-            return false;
-        }
+        if (index === -1) return false;
 
         data.activities.splice(index, 1);
 
@@ -121,6 +119,90 @@ const AdventurePlanner = (() => {
             data.completedActivities.filter(id => id !== activityId);
 
         return saveData();
+    }
+
+    function exportBackup() {
+
+        const backup = {
+            application: CONFIG.appName,
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            data
+        };
+
+        const blob = new Blob(
+            [JSON.stringify(backup, null, 2)],
+            { type: "application/json" }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "adventure-planner-backup.json";
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+    }
+
+    function importBackup(backup) {
+
+        if (
+            !backup ||
+            backup.application !== CONFIG.appName ||
+            backup.version !== 1 ||
+            !backup.data ||
+            !Array.isArray(backup.data.activities) ||
+            !Array.isArray(backup.data.completedActivities) ||
+            !Array.isArray(backup.data.savedItineraries)
+        ) {
+            throw new Error("This is not a valid Adventure Planner backup.");
+        }
+
+        const validActivities = backup.data.activities.every(activity =>
+            activity &&
+            typeof activity.id === "string" &&
+            typeof activity.name === "string" &&
+            typeof activity.destination === "string" &&
+            typeof activity.region === "string" &&
+            typeof activity.description === "string" &&
+            Array.isArray(activity.category)
+        );
+
+        if (!validActivities) {
+            throw new Error("The backup contains invalid activity records.");
+        }
+
+        const importedData = {
+            ...DEFAULT_DATA,
+            ...backup.data,
+            activities: backup.data.activities,
+            completedActivities: backup.data.completedActivities,
+            savedItineraries: backup.data.savedItineraries,
+            preferences: {
+                ...DEFAULT_DATA.preferences,
+                ...(backup.data.preferences || {})
+            }
+        };
+
+        const previousData = {
+            activities: [...data.activities],
+            completedActivities: [...data.completedActivities],
+            savedItineraries: [...data.savedItineraries],
+            preferences: { ...data.preferences }
+        };
+
+        Object.assign(data, importedData);
+
+        if (!saveData()) {
+            Object.assign(data, previousData);
+            throw new Error("Unable to save the imported backup.");
+        }
+
+        return true;
     }
 
     return {
@@ -131,7 +213,9 @@ const AdventurePlanner = (() => {
         isCompleted,
         toggleCompleted,
         addActivity,
-        deleteActivity
+        deleteActivity,
+        exportBackup,
+        importBackup
     };
 
 })();
@@ -170,9 +254,7 @@ function createAddActivityForm() {
         input.name = name;
         input.required = required;
 
-        if (type === "number") {
-            input.min = "0";
-        }
+        if (type === "number") input.min = "0";
 
         wrapper.append(label, input);
         form.appendChild(wrapper);
@@ -324,7 +406,6 @@ function createAddActivityForm() {
     });
 
     section.append(heading, introduction, form);
-
     document.querySelector("main").appendChild(section);
 }
 
@@ -336,10 +417,7 @@ function createAddActivityForm() {
 function renderActivityBrowser() {
 
     const existing = document.getElementById("activity-browser");
-
-    if (existing) {
-        existing.remove();
-    }
+    if (existing) existing.remove();
 
     const activities = AdventurePlanner.getActivities();
 
@@ -465,11 +543,7 @@ function renderActivityBrowser() {
     resetButton.className = "reset-filters";
 
     const count = document.createElement("p");
-    count.id = "activity-count";
-
     const progress = document.createElement("p");
-    progress.id = "activity-progress";
-
     const results = document.createElement("div");
     results.id = "activity-results";
 
@@ -586,7 +660,8 @@ function renderActivityBrowser() {
             };
 
             const dog = document.createElement("p");
-            dog.textContent = dogLabels[activity.dogPolicy] || "Dog policy unknown";
+            dog.textContent =
+                dogLabels[activity.dogPolicy] || "Dog policy unknown";
 
             const status = document.createElement("p");
             status.textContent = completed
@@ -644,10 +719,7 @@ function renderActivityBrowser() {
 function renderMyActivities() {
 
     const existing = document.getElementById("my-activities");
-
-    if (existing) {
-        existing.remove();
-    }
+    if (existing) existing.remove();
 
     const customActivities = AdventurePlanner.data.activities || [];
 
@@ -698,11 +770,7 @@ function renderMyActivities() {
 
         deleteButton.addEventListener("click", () => {
 
-            const confirmed = window.confirm(
-                `Are you sure you want to delete "${activity.name}"?`
-            );
-
-            if (!confirmed) return;
+            if (!window.confirm(`Delete "${activity.name}"?`)) return;
 
             if (AdventurePlanner.deleteActivity(activity.id)) {
                 renderMyActivities();
@@ -717,6 +785,90 @@ function renderMyActivities() {
     });
 
     section.append(heading, introduction, count, list);
+    document.querySelector("main").appendChild(section);
+}
+
+
+/*
+ * Backup and restore section
+ */
+
+function createBackupSection() {
+
+    const section = document.createElement("section");
+    section.className = "feature";
+    section.id = "backup-section";
+
+    const heading = document.createElement("h2");
+    heading.textContent = "Back Up My Adventures";
+
+    const introduction = document.createElement("p");
+    introduction.textContent =
+        "Save a copy of your personal activities, completion history and preferences. Keep this file somewhere safe.";
+
+    const exportButton = document.createElement("button");
+    exportButton.type = "button";
+    exportButton.className = "add-activity-button";
+    exportButton.textContent = "Download backup";
+
+    exportButton.addEventListener("click", () => {
+        AdventurePlanner.exportBackup();
+    });
+
+    const importLabel = document.createElement("label");
+    importLabel.className = "form-field";
+
+    const importText = document.createElement("span");
+    importText.textContent = "Restore from a previous backup";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".json,application/json";
+
+    importLabel.append(importText, fileInput);
+
+    const message = document.createElement("p");
+    message.id = "backup-message";
+
+    fileInput.addEventListener("change", async () => {
+
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        try {
+            const contents = await file.text();
+            const backup = JSON.parse(contents);
+
+            if (!window.confirm(
+                "Restoring this backup will replace your current personal activities, completion history and preferences. Continue?"
+            )) {
+                fileInput.value = "";
+                return;
+            }
+
+            AdventurePlanner.importBackup(backup);
+
+            message.textContent =
+                "Backup restored successfully.";
+
+            renderActivityBrowser();
+            renderMyActivities();
+
+        } catch (error) {
+            message.textContent =
+                `Restore failed: ${error.message}`;
+        }
+
+        fileInput.value = "";
+    });
+
+    section.append(
+        heading,
+        introduction,
+        exportButton,
+        importLabel,
+        message
+    );
 
     document.querySelector("main").appendChild(section);
 }
@@ -735,5 +887,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderActivityBrowser();
     createAddActivityForm();
     renderMyActivities();
+    createBackupSection();
 
 });
