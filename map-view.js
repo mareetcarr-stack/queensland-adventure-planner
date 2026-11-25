@@ -3,8 +3,8 @@
 
 /*
  * Adventure Planner — Interactive Map
- * Uses Leaflet and OpenStreetMap.
- * Coordinates represent approximate destination locations.
+ * Leaflet + OpenStreetMap.
+ * Destination coordinates are approximate, not exact attraction entrances.
  */
 
 (() => {
@@ -40,6 +40,7 @@
         "Byron Bay": [-28.647, 153.602],
         "Lennox Head": [-28.791, 153.594],
         "Brunswick Heads": [-28.541, 153.545],
+        "North Tumbulgum": [-28.304, 153.465],
         "Tintenbar": [-28.797, 153.513],
         "Bangalow": [-28.686, 153.522],
         "Montecollum": [-28.574, 153.459],
@@ -74,7 +75,7 @@
             script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
             script.onload = resolve;
             script.onerror = () => reject(
-                new Error("Unable to load the map library.")
+                new Error("Unable to load Leaflet.")
             );
 
             document.head.appendChild(script);
@@ -84,9 +85,11 @@
     }
 
     function initialise() {
-        if (!window.AdventurePlanner) return;
+        const planner = window.AdventurePlanner;
 
-        if (document.getElementById("adventure-map-section")) return;
+        if (!planner || document.getElementById("adventure-map-section")) {
+            return;
+        }
 
         const section = document.createElement("section");
         section.className = "feature";
@@ -97,7 +100,7 @@
 
         const intro = document.createElement("p");
         intro.textContent =
-            "See where your saved experiences are located across South-East Queensland and Northern NSW. Select a marker to see what's available at each destination.";
+            "Explore your activity library geographically. Select a marker to see experiences at that destination and mark them complete without leaving the map.";
 
         const controls = document.createElement("div");
         controls.className = "map-view-controls";
@@ -119,7 +122,10 @@
         }
 
         const regionFilter = makeFilter("Region", "map-region-filter");
-        const categoryFilter = makeFilter("Experience type", "map-category-filter");
+        const categoryFilter = makeFilter(
+            "Experience type",
+            "map-category-filter"
+        );
 
         const mapMessage = document.createElement("p");
         mapMessage.className = "map-view-message";
@@ -132,7 +138,7 @@
         const legend = document.createElement("p");
         legend.className = "map-view-legend";
         legend.textContent =
-            "Markers show approximate destination locations. They do not represent exact attraction entrances or verified routes.";
+            "Map pins show approximate destination locations, not exact attraction entrances or verified driving routes.";
 
         section.append(
             heading,
@@ -146,8 +152,11 @@
         const main = document.querySelector("main");
         const footer = main?.querySelector("footer");
 
-        if (footer) main.insertBefore(section, footer);
-        else main?.appendChild(section);
+        if (footer) {
+            main.insertBefore(section, footer);
+        } else {
+            main?.appendChild(section);
+        }
 
         const style = document.createElement("style");
         style.textContent = `
@@ -192,22 +201,47 @@
                 line-height: 1.5;
             }
 
+            .map-popup {
+                min-width: 210px;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+
             .map-popup h3 {
-                margin: 0 0 8px;
+                margin: 0 0 10px;
                 color: #183b35;
                 font-size: 1rem;
             }
 
-            .map-popup ul {
-                margin: 0;
-                padding-left: 19px;
-                line-height: 1.6;
+            .map-popup-activity {
+                padding: 9px 0;
+                border-top: 1px solid #e5e9e7;
             }
 
-            .map-popup li { margin-bottom: 5px; }
+            .map-popup-activity strong {
+                display: block;
+                margin-bottom: 6px;
+                line-height: 1.35;
+            }
 
-            .map-popup .completed-label {
-                color: #687871;
+            .map-popup-activity button {
+                min-height: 32px;
+                padding: 5px 9px;
+                border: 1px solid #b8c9c1;
+                border-radius: 6px;
+                background: #f2f6f3;
+                color: #183b35;
+                cursor: pointer;
+                font: inherit;
+                font-size: .8rem;
+            }
+
+            .map-popup-activity button:hover {
+                background: #e2eee7;
+            }
+
+            .map-popup-activity .completed-label {
+                color: #53715f;
                 font-size: .8rem;
             }
 
@@ -219,7 +253,7 @@
 
         document.head.appendChild(style);
 
-        const allActivities = window.AdventurePlanner.getActivities();
+        const allActivities = planner.getActivities();
 
         const regions = [...new Set(
             allActivities.map(activity => activity.region).filter(Boolean)
@@ -244,6 +278,7 @@
         }
 
         populateFilter(regionFilter, "All regions", regions);
+
         populateFilter(
             categoryFilter,
             "All experience types",
@@ -260,10 +295,10 @@
 
             markerLayer.clearLayers();
 
-            const activities = window.AdventurePlanner.getActivities();
+            const currentActivities = planner.getActivities();
             const groups = new Map();
 
-            activities.forEach(activity => {
+            currentActivities.forEach(activity => {
                 const destination = activity.destination;
 
                 if (!destination || !LOCATIONS[destination]) return;
@@ -289,34 +324,46 @@
             let activityCount = 0;
 
             groups.forEach((items, destination) => {
-                const coordinates = LOCATIONS[destination];
-                const marker = L.marker(coordinates);
-
+                const marker = L.marker(LOCATIONS[destination]);
                 const popup = document.createElement("div");
                 popup.className = "map-popup";
 
                 const title = document.createElement("h3");
                 title.textContent = destination;
-
-                const list = document.createElement("ul");
+                popup.appendChild(title);
 
                 items.forEach(activity => {
-                    const item = document.createElement("li");
-                    item.textContent = activity.name;
+                    const item = document.createElement("div");
+                    item.className = "map-popup-activity";
 
-                    if (window.AdventurePlanner.isCompleted(activity.id)) {
-                        const completed = document.createElement("span");
-                        completed.className = "completed-label";
-                        completed.textContent = " (completed)";
-                        item.appendChild(completed);
+                    const name = document.createElement("strong");
+                    name.textContent = activity.name;
+                    item.appendChild(name);
+
+                    const completed = planner.isCompleted(activity.id);
+
+                    if (completed) {
+                        const status = document.createElement("span");
+                        status.className = "completed-label";
+                        status.textContent = "Completed";
+                        item.appendChild(status);
+                    } else {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.textContent = "Mark as completed";
+
+                        button.addEventListener("click", () => {
+                            planner.toggleCompleted(activity.id);
+                            renderMarkers();
+                        });
+
+                        item.appendChild(button);
                     }
 
-                    list.appendChild(item);
+                    popup.appendChild(item);
                 });
 
-                popup.append(title, list);
                 marker.bindPopup(popup);
-
                 marker.addTo(markerLayer);
 
                 markerCount++;
@@ -352,12 +399,12 @@
                     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                     {
                         maxZoom: 19,
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        attribution:
+                            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     }
                 ).addTo(map);
 
                 markerLayer = L.layerGroup().addTo(map);
-
                 renderMarkers();
 
                 setTimeout(() => map.invalidateSize(), 150);
