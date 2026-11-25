@@ -3,7 +3,7 @@
 
 /*
  * Adventure Planner
- * Main application script
+ * Activity browser and completion tracking
  */
 
 const AdventurePlanner = (() => {
@@ -11,8 +11,7 @@ const AdventurePlanner = (() => {
     const CONFIG = {
         appName: "Adventure Planner",
         homeLocation: "Clontarf, Queensland",
-        storageKey: "adventurePlannerData",
-        defaultRegion: "South-East Queensland and Northern NSW"
+        storageKey: "adventurePlannerData"
     };
 
     const DEFAULT_DATA = {
@@ -29,12 +28,18 @@ const AdventurePlanner = (() => {
 
     function loadData() {
         try {
-            const storedData = localStorage.getItem(CONFIG.storageKey);
+            const stored = localStorage.getItem(CONFIG.storageKey);
 
-            if (storedData) {
+            if (stored) {
+                const parsed = JSON.parse(stored);
+
                 return {
                     ...DEFAULT_DATA,
-                    ...JSON.parse(storedData)
+                    ...parsed,
+                    preferences: {
+                        ...DEFAULT_DATA.preferences,
+                        ...(parsed.preferences || {})
+                    }
                 };
             }
         } catch (error) {
@@ -44,9 +49,14 @@ const AdventurePlanner = (() => {
         return structuredClone(DEFAULT_DATA);
     }
 
-    function saveData(data) {
+    const data = loadData();
+
+    function saveData() {
         try {
-            localStorage.setItem(CONFIG.storageKey, JSON.stringify(data));
+            localStorage.setItem(
+                CONFIG.storageKey,
+                JSON.stringify(data)
+            );
             return true;
         } catch (error) {
             console.error("Unable to save data:", error);
@@ -54,12 +64,27 @@ const AdventurePlanner = (() => {
         }
     }
 
-    const data = loadData();
+    function isCompleted(activityId) {
+        return data.completedActivities.includes(activityId);
+    }
+
+    function toggleCompleted(activityId) {
+        if (isCompleted(activityId)) {
+            data.completedActivities =
+                data.completedActivities.filter(id => id !== activityId);
+        } else {
+            data.completedActivities.push(activityId);
+        }
+
+        saveData();
+    }
 
     return {
         config: CONFIG,
         data,
-        saveData: () => saveData(data)
+        saveData,
+        isCompleted,
+        toggleCompleted
     };
 
 })();
@@ -84,11 +109,9 @@ function createActivityBrowser() {
     introduction.textContent =
         "Find experiences that match your interests and preferences.";
 
-    const count = document.createElement("p");
-    count.id = "activity-count";
-
     const search = document.createElement("input");
     search.type = "search";
+    search.id = "activity-search";
     search.placeholder = "Search activities or destinations...";
     search.setAttribute("aria-label", "Search activities or destinations");
 
@@ -96,7 +119,6 @@ function createActivityBrowser() {
     filters.className = "activity-filters";
 
     function createFilter(labelText, options, name) {
-
         const wrapper = document.createElement("label");
         wrapper.className = "filter-field";
 
@@ -185,10 +207,26 @@ function createActivityBrowser() {
         "dog"
     );
 
+    const completionFilter = createFilter(
+        "Completion status",
+        [
+            { value: "all", label: "All activities" },
+            { value: "incomplete", label: "Not yet completed" },
+            { value: "complete", label: "Completed" }
+        ],
+        "completion"
+    );
+
     const resetButton = document.createElement("button");
     resetButton.type = "button";
     resetButton.textContent = "Clear filters";
     resetButton.className = "reset-filters";
+
+    const count = document.createElement("p");
+    count.id = "activity-count";
+
+    const progress = document.createElement("p");
+    progress.id = "activity-progress";
 
     const results = document.createElement("div");
     results.id = "activity-results";
@@ -200,6 +238,7 @@ function createActivityBrowser() {
         filters,
         resetButton,
         count,
+        progress,
         results
     );
 
@@ -214,11 +253,20 @@ function createActivityBrowser() {
         results.replaceChildren();
 
         const term = search.value.trim().toLowerCase();
+
         const selectedRegion = regionFilter.value;
         const selectedCategory = categoryFilter.value;
         const selectedBudget = budgetFilter.value;
         const selectedDuration = durationFilter.value;
         const selectedDog = dogFilter.value;
+        const selectedCompletion = completionFilter.value;
+
+        const completedCount = activities.filter(
+            activity => AdventurePlanner.isCompleted(activity.id)
+        ).length;
+
+        progress.textContent =
+            `Your progress: ${completedCount} of ${activities.length} experiences completed`;
 
         const filtered = activities.filter(activity => {
 
@@ -244,20 +292,20 @@ function createActivityBrowser() {
 
             if (selectedBudget !== "any") {
 
-                if (activity.estimatedCost === null ||
-                    activity.estimatedCost === undefined) {
-                    return false;
-                }
+                if (
+                    activity.estimatedCost === null ||
+                    activity.estimatedCost === undefined
+                ) return false;
 
                 const limit = Number(selectedBudget);
 
-                if (
-                    limit === 0 && activity.estimatedCost !== 0
-                ) return false;
+                if (limit === 0 && activity.estimatedCost !== 0) {
+                    return false;
+                }
 
-                if (
-                    limit > 0 && activity.estimatedCost >= limit
-                ) return false;
+                if (limit > 0 && activity.estimatedCost >= limit) {
+                    return false;
+                }
             }
 
             if (
@@ -268,6 +316,18 @@ function createActivityBrowser() {
             if (
                 selectedDog !== "any" &&
                 activity.dogPolicy !== selectedDog
+            ) return false;
+
+            const completed = AdventurePlanner.isCompleted(activity.id);
+
+            if (
+                selectedCompletion === "complete" &&
+                !completed
+            ) return false;
+
+            if (
+                selectedCompletion === "incomplete" &&
+                completed
             ) return false;
 
             return true;
@@ -285,6 +345,8 @@ function createActivityBrowser() {
         }
 
         filtered.forEach(activity => {
+
+            const completed = AdventurePlanner.isCompleted(activity.id);
 
             const card = document.createElement("article");
             card.className = "activity-card";
@@ -312,15 +374,32 @@ function createActivityBrowser() {
             duration.textContent =
                 `Duration: ${activity.durationHours} hours`;
 
-            const dog = document.createElement("p");
             const dogLabels = {
                 friendly: "Dog-friendly",
                 verify: "Dog access needs verification",
-                restricted: "Dogs not permitted",
-                any: "Dog policy unknown"
+                restricted: "Dogs not permitted"
             };
+
+            const dog = document.createElement("p");
             dog.textContent =
                 dogLabels[activity.dogPolicy] || "Dog policy unknown";
+
+            const status = document.createElement("p");
+            status.textContent = completed
+                ? "✓ Experience completed"
+                : "Not yet completed";
+
+            const completeButton = document.createElement("button");
+            completeButton.type = "button";
+            completeButton.className = "reset-filters";
+            completeButton.textContent = completed
+                ? "Mark as not completed"
+                : "Mark as completed";
+
+            completeButton.addEventListener("click", () => {
+                AdventurePlanner.toggleCompleted(activity.id);
+                renderActivities();
+            });
 
             card.append(
                 name,
@@ -328,7 +407,9 @@ function createActivityBrowser() {
                 description,
                 cost,
                 duration,
-                dog
+                dog,
+                status,
+                completeButton
             );
 
             results.appendChild(card);
@@ -344,6 +425,8 @@ function createActivityBrowser() {
         budgetFilter.value = "any";
         durationFilter.value = "any";
         dogFilter.value = "any";
+        completionFilter.value = "all";
+
         renderActivities();
     });
 
