@@ -2,13 +2,17 @@
 "use strict";
 
 /*
- * Automatic Day Trip Generator — destination-based version
+ * Automatic Day Trip Generator
  *
- * Builds suggestions from uncompleted activities.
- * Groups activities by their actual destination rather than
- * broad region, preventing unsuitable cross-town combinations.
+ * Features:
+ * - Destination-based activity grouping
+ * - Approximate distance filter from Clontarf
+ * - Budget, duration and dog preferences
+ * - Excludes completed activities
+ * - Selectable activities and saved itineraries
  *
- * Does not invent driving times, routes or opening hours.
+ * Distance estimates use straight-line distance multiplied by 1.3.
+ * They are not live road distances or navigation directions.
  */
 
 (() => {
@@ -28,15 +32,91 @@
 
         if (introduction) {
             introduction.textContent =
-                "Generate a suggested outing based on your available time, budget, interests and dog preferences.";
+                "Build a suggested day out based on distance from home, available time, budget and dog preferences.";
+        }
+
+        const HOME = { lat: -27.253, lon: 153.083 };
+
+        const LOCATIONS = {
+            "Redcliffe": [-27.230, 153.113],
+            "Woody Point": [-27.256, 153.104],
+            "Bribie Island": [-27.064, 153.158],
+            "Maleny": [-26.760, 152.850],
+            "Noosa": [-26.395, 153.091],
+            "Kenilworth": [-26.592, 152.728],
+            "Woombye": [-26.661, 152.962],
+            "Scarborough": [-27.201, 153.109],
+            "Shorncliffe": [-27.327, 153.081],
+            "Wynnum": [-27.445, 153.175],
+            "South Brisbane": [-27.481, 153.021],
+            "Brisbane City": [-27.469, 153.025],
+            "New Farm": [-27.468, 153.047],
+            "Kangaroo Point": [-27.481, 153.036],
+            "Mount Coot-tha": [-27.477, 152.976],
+            "Buddina": [-26.696, 153.132],
+            "Eumundi": [-26.477, 152.951],
+            "Mooloolaba": [-26.681, 153.119],
+            "Caloundra": [-26.803, 153.131],
+            "Beerburrum": [-26.956, 152.962],
+            "North Stradbroke Island": [-27.520, 153.430],
+            "Moreton Island": [-27.170, 153.400],
+            "Cleveland": [-27.525, 153.265],
+            "Sandstone Point": [-27.080, 153.145],
+            "Burleigh Heads": [-28.088, 153.452],
+            "Southport": [-27.967, 153.415],
+            "Tamborine Mountain": [-27.930, 153.190],
+            "Byron Bay": [-28.647, 153.602],
+            "Lennox Head": [-28.791, 153.594],
+            "Brunswick Heads": [-28.541, 153.545],
+            "Tintenbar": [-28.797, 153.513],
+            "Bangalow": [-28.686, 153.522],
+            "Montecollum": [-28.574, 153.459],
+            "Nightcap National Park": [-28.570, 153.330],
+            "Wivenhoe Dam": [-27.395, 152.608],
+            "Mount Mee": [-27.080, 152.750],
+            "Dayboro": [-27.196, 152.825],
+            "Hamilton": [-27.439, 153.066],
+            "Biggera Waters": [-27.927, 153.400],
+            "Beerwah": [-26.858, 152.961],
+            "Oxenford": [-27.891, 153.313],
+            "Margate": [-27.243, 153.106]
+        };
+
+        function distanceBetween(a, b) {
+            const radians = degrees => degrees * Math.PI / 180;
+            const earthRadius = 6371;
+
+            const lat1 = radians(a.lat);
+            const lat2 = radians(b.lat);
+            const deltaLat = radians(b.lat - a.lat);
+            const deltaLon = radians(b.lon - a.lon);
+
+            const value =
+                Math.sin(deltaLat / 2) ** 2 +
+                Math.cos(lat1) * Math.cos(lat2) *
+                Math.sin(deltaLon / 2) ** 2;
+
+            return earthRadius * 2 *
+                Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+        }
+
+        function estimatedRoadDistance(destination) {
+            const coordinates = LOCATIONS[destination];
+
+            if (!coordinates) return null;
+
+            const straightLine = distanceBetween(
+                HOME,
+                { lat: coordinates[0], lon: coordinates[1] }
+            );
+
+            return Math.round(straightLine * 1.3);
         }
 
         const style = document.createElement("style");
 
         style.textContent = `
-            .day-generator {
-                margin-top: 20px;
-            }
+            .day-generator { margin-top: 20px; }
 
             .day-generator-controls {
                 display: grid;
@@ -47,9 +127,7 @@
                 background: var(--surface);
             }
 
-            .day-generator-controls .filter-field {
-                min-width: 0;
-            }
+            .day-generator-controls .filter-field { min-width: 0; }
 
             .day-generator-controls select {
                 width: 100%;
@@ -69,9 +147,7 @@
                 margin: 16px 0;
             }
 
-            .day-generator-actions button {
-                flex: 1 1 180px;
-            }
+            .day-generator-actions button { flex: 1 1 180px; }
 
             .generated-day {
                 margin-top: 20px;
@@ -172,6 +248,20 @@
             return { label, select };
         }
 
+        const distanceControl = createSelect(
+            "Maximum estimated drive distance from Clontarf",
+            "generator-distance",
+            [
+                { value: "any", label: "Any distance" },
+                { value: "25", label: "Up to 25 km" },
+                { value: "50", label: "Up to 50 km" },
+                { value: "75", label: "Up to 75 km" },
+                { value: "100", label: "Up to 100 km" },
+                { value: "150", label: "Up to 150 km" },
+                { value: "200", label: "Up to 200 km" }
+            ]
+        );
+
         const durationControl = createSelect(
             "Available activity time",
             "generator-duration",
@@ -209,6 +299,7 @@
         controls.className = "day-generator-controls";
 
         controls.append(
+            distanceControl.label,
             durationControl.label,
             budgetControl.label,
             dogControl.label
@@ -242,43 +333,41 @@
 
         function getEligibleActivities() {
             return AdventurePlanner.getActivities().filter(activity => {
-                if (AdventurePlanner.isCompleted(activity.id)) {
-                    return false;
-                }
+                if (AdventurePlanner.isCompleted(activity.id)) return false;
 
                 const duration = Number(activity.durationHours);
 
-                if (!Number.isFinite(duration) || duration <= 0) {
-                    return false;
-                }
+                if (!Number.isFinite(duration) || duration <= 0) return false;
 
                 if (
                     dogControl.select.value === "friendly" &&
                     activity.dogPolicy !== "friendly"
-                ) {
-                    return false;
-                }
+                ) return false;
 
                 if (
                     dogControl.select.value === "exclude-restricted" &&
                     activity.dogPolicy === "restricted"
-                ) {
-                    return false;
-                }
+                ) return false;
 
                 const budget = budgetControl.select.value;
 
                 if (budget !== "any") {
                     if (
                         activity.estimatedCost === null ||
-                        activity.estimatedCost === undefined
-                    ) {
-                        return false;
-                    }
+                        activity.estimatedCost === undefined ||
+                        Number(activity.estimatedCost) > Number(budget)
+                    ) return false;
+                }
 
-                    if (Number(activity.estimatedCost) > Number(budget)) {
-                        return false;
-                    }
+                const maximumDistance = distanceControl.select.value;
+
+                if (maximumDistance !== "any") {
+                    const distance = estimatedRoadDistance(activity.destination);
+
+                    if (
+                        distance === null ||
+                        distance > Number(maximumDistance)
+                    ) return false;
                 }
 
                 return true;
@@ -298,13 +387,10 @@
 
         function buildSuggestions() {
             const maximumHours = Number(durationControl.select.value);
-            const eligible = getEligibleActivities();
-
             const groups = new Map();
 
-            eligible.forEach(activity => {
-                const destination =
-                    (activity.destination || "").trim();
+            getEligibleActivities().forEach(activity => {
+                const destination = (activity.destination || "").trim();
 
                 if (!destination) return;
 
@@ -317,30 +403,27 @@
 
             const suggestions = [];
 
-            groups.forEach((groupActivities, destination) => {
+            groups.forEach((activities, destination) => {
                 const selected = [];
                 let totalHours = 0;
 
-                const candidates = shuffle(groupActivities);
-
-                for (const activity of candidates) {
+                for (const activity of shuffle(activities)) {
                     const duration = Number(activity.durationHours);
 
-                    if (totalHours + duration > maximumHours) {
-                        continue;
-                    }
+                    if (totalHours + duration > maximumHours) continue;
 
                     selected.push(activity);
                     totalHours += duration;
                 }
 
-                if (selected.length === 0) return;
+                if (!selected.length) return;
 
                 suggestions.push({
                     destination,
                     region: selected[0].region || "",
                     activities: selected,
-                    totalHours
+                    totalHours,
+                    distance: estimatedRoadDistance(destination)
                 });
             });
 
@@ -358,9 +441,9 @@
 
             const intro = document.createElement("p");
             intro.className = "generated-day-intro";
-            intro.textContent = suggestion.region
-                ? `A suggested outing in ${suggestion.destination}, ${suggestion.region}.`
-                : `A suggested outing in ${suggestion.destination}.`;
+            intro.textContent =
+                `${suggestion.region ? suggestion.region + " · " : ""}` +
+                `Approximately ${suggestion.distance} km from Clontarf (estimated one-way road distance).`;
 
             const activityContainer = document.createElement("div");
             const selectedIds = new Set(
@@ -413,11 +496,8 @@
                 checkbox.checked = true;
 
                 checkbox.addEventListener("change", () => {
-                    if (checkbox.checked) {
-                        selectedIds.add(activity.id);
-                    } else {
-                        selectedIds.delete(activity.id);
-                    }
+                    if (checkbox.checked) selectedIds.add(activity.id);
+                    else selectedIds.delete(activity.id);
 
                     updateSummary();
                 });
@@ -458,7 +538,7 @@
             const note = document.createElement("p");
             note.className = "generated-day-meta";
             note.textContent =
-                "These activities share the same listed destination. Driving time, exact route order, opening hours and bookings have not yet been verified. Check these before setting out.";
+                "Distance is an approximate one-way estimate from Clontarf, calculated from geographic coordinates. Actual driving distances and times may differ. Check navigation, opening hours, access restrictions and bookings before travelling.";
 
             const saveButton = document.createElement("button");
             saveButton.type = "button";
@@ -470,15 +550,15 @@
                     .filter(activity => selectedIds.has(activity.id))
                     .map(activity => activity.id);
 
-                if (ids.length === 0) {
+                if (!ids.length) {
                     message.textContent =
                         "Select at least one experience before saving.";
                     return;
                 }
 
-                const date = new Date();
+                const now = new Date();
                 const localDate = new Date(
-                    date.getTime() - date.getTimezoneOffset() * 60000
+                    now.getTime() - now.getTimezoneOffset() * 60000
                 ).toISOString().slice(0, 10);
 
                 const saved = AdventurePlanner.saveItinerary({
@@ -522,12 +602,12 @@
 
             const suggestions = buildSuggestions();
 
-            if (suggestions.length === 0) {
+            if (!suggestions.length) {
                 results.replaceChildren();
 
                 const empty = document.createElement("p");
                 empty.textContent =
-                    "No uncompleted activities match these preferences. Try increasing your available time or budget, or changing your dog preference.";
+                    "No uncompleted activities match these preferences. Try increasing your distance, time or budget limits.";
 
                 results.appendChild(empty);
                 regenerateButton.hidden = true;
