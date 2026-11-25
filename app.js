@@ -65,12 +65,9 @@ const AdventurePlanner = (() => {
     }
 
     function getActivities() {
-        const original = window.ADVENTURE_ACTIVITIES || [];
-        const custom = data.activities || [];
-
         return [
-            ...original,
-            ...custom
+            ...(window.ADVENTURE_ACTIVITIES || []),
+            ...(data.activities || [])
         ];
     }
 
@@ -109,6 +106,23 @@ const AdventurePlanner = (() => {
         return null;
     }
 
+    function deleteActivity(activityId) {
+        const index = data.activities.findIndex(
+            activity => activity.id === activityId
+        );
+
+        if (index === -1) {
+            return false;
+        }
+
+        data.activities.splice(index, 1);
+
+        data.completedActivities =
+            data.completedActivities.filter(id => id !== activityId);
+
+        return saveData();
+    }
+
     return {
         config: CONFIG,
         data,
@@ -116,7 +130,8 @@ const AdventurePlanner = (() => {
         getActivities,
         isCompleted,
         toggleCompleted,
-        addActivity
+        addActivity,
+        deleteActivity
     };
 
 })();
@@ -251,7 +266,6 @@ function createAddActivityForm() {
         event.preventDefault();
 
         const formData = new FormData(form);
-
         const estimatedCostValue = formData.get("estimatedCost");
 
         const activity = {
@@ -302,6 +316,7 @@ function createAddActivityForm() {
             form.reset();
 
             renderActivityBrowser();
+            renderMyActivities();
         } else {
             message.textContent =
                 "Unable to save this activity. Check your browser storage.";
@@ -379,10 +394,7 @@ function renderActivityBrowser() {
         "Region",
         [
             { value: "all", label: "All regions" },
-            ...regions.map(region => ({
-                value: region,
-                label: region
-            }))
+            ...regions.map(region => ({ value: region, label: region }))
         ],
         "region"
     );
@@ -505,23 +517,11 @@ function renderActivityBrowser() {
             ].join(" ").toLowerCase();
 
             if (term && !searchableText.includes(term)) return false;
-
-            if (
-                selectedRegion !== "all" &&
-                activity.region !== selectedRegion
-            ) return false;
-
-            if (
-                selectedCategory !== "all" &&
-                !(activity.category || []).includes(selectedCategory)
-            ) return false;
+            if (selectedRegion !== "all" && activity.region !== selectedRegion) return false;
+            if (selectedCategory !== "all" && !(activity.category || []).includes(selectedCategory)) return false;
 
             if (selectedBudget !== "any") {
-
-                if (
-                    activity.estimatedCost === null ||
-                    activity.estimatedCost === undefined
-                ) return false;
+                if (activity.estimatedCost === null || activity.estimatedCost === undefined) return false;
 
                 const limit = Number(selectedBudget);
 
@@ -529,15 +529,8 @@ function renderActivityBrowser() {
                 if (limit > 0 && activity.estimatedCost >= limit) return false;
             }
 
-            if (
-                selectedDuration !== "any" &&
-                activity.durationHours > Number(selectedDuration)
-            ) return false;
-
-            if (
-                selectedDog !== "any" &&
-                activity.dogPolicy !== selectedDog
-            ) return false;
+            if (selectedDuration !== "any" && activity.durationHours > Number(selectedDuration)) return false;
+            if (selectedDog !== "any" && activity.dogPolicy !== selectedDog) return false;
 
             const completed = AdventurePlanner.isCompleted(activity.id);
 
@@ -577,16 +570,14 @@ function renderActivityBrowser() {
 
             const cost = document.createElement("p");
             cost.textContent =
-                activity.estimatedCost === null ||
-                activity.estimatedCost === undefined
+                activity.estimatedCost === null || activity.estimatedCost === undefined
                     ? "Cost: To be confirmed"
                     : activity.estimatedCost === 0
                         ? "Cost: Free"
                         : `Estimated cost: $${activity.estimatedCost}`;
 
             const duration = document.createElement("p");
-            duration.textContent =
-                `Duration: ${activity.durationHours} hours`;
+            duration.textContent = `Duration: ${activity.durationHours} hours`;
 
             const dogLabels = {
                 friendly: "Dog-friendly",
@@ -595,8 +586,7 @@ function renderActivityBrowser() {
             };
 
             const dog = document.createElement("p");
-            dog.textContent =
-                dogLabels[activity.dogPolicy] || "Dog policy unknown";
+            dog.textContent = dogLabels[activity.dogPolicy] || "Dog policy unknown";
 
             const status = document.createElement("p");
             status.textContent = completed
@@ -640,11 +630,95 @@ function renderActivityBrowser() {
         durationFilter.value = "any";
         dogFilter.value = "any";
         completionFilter.value = "all";
-
         renderActivities();
     });
 
     renderActivities();
+}
+
+
+/*
+ * My Activities management
+ */
+
+function renderMyActivities() {
+
+    const existing = document.getElementById("my-activities");
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const customActivities = AdventurePlanner.data.activities || [];
+
+    const section = document.createElement("section");
+    section.className = "feature";
+    section.id = "my-activities";
+
+    const heading = document.createElement("h2");
+    heading.textContent = "My Activities";
+
+    const introduction = document.createElement("p");
+    introduction.textContent =
+        "Manage the experiences you've added to your personal collection.";
+
+    const count = document.createElement("p");
+    count.textContent =
+        `${customActivities.length} personal activities added`;
+
+    const list = document.createElement("div");
+    list.className = "my-activities-list";
+
+    if (customActivities.length === 0) {
+        const empty = document.createElement("p");
+        empty.textContent =
+            "You haven't added any personal activities yet.";
+        list.appendChild(empty);
+    }
+
+    customActivities.forEach(activity => {
+
+        const card = document.createElement("article");
+        card.className = "activity-card";
+
+        const name = document.createElement("h3");
+        name.textContent = activity.name;
+
+        const destination = document.createElement("p");
+        destination.textContent =
+            `${activity.destination} · ${activity.region}`;
+
+        const description = document.createElement("p");
+        description.textContent = activity.description;
+
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "reset-filters";
+        deleteButton.textContent = "Delete activity";
+
+        deleteButton.addEventListener("click", () => {
+
+            const confirmed = window.confirm(
+                `Are you sure you want to delete "${activity.name}"?`
+            );
+
+            if (!confirmed) return;
+
+            if (AdventurePlanner.deleteActivity(activity.id)) {
+                renderMyActivities();
+                renderActivityBrowser();
+            } else {
+                window.alert("Unable to delete this activity.");
+            }
+        });
+
+        card.append(name, destination, description, deleteButton);
+        list.appendChild(card);
+    });
+
+    section.append(heading, introduction, count, list);
+
+    document.querySelector("main").appendChild(section);
 }
 
 
@@ -660,5 +734,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderActivityBrowser();
     createAddActivityForm();
+    renderMyActivities();
 
 });
