@@ -2,14 +2,13 @@
 "use strict";
 
 /*
- * Automatic Day Trip Generator
+ * Automatic Day Trip Generator — destination-based version
  *
- * Builds suggested outings from uncompleted activities.
- * Groups suggestions by region, avoids repeating completed
- * experiences and supports budget, dog and duration filters.
+ * Builds suggestions from uncompleted activities.
+ * Groups activities by their actual destination rather than
+ * broad region, preventing unsuitable cross-town combinations.
  *
- * Travel times are deliberately not estimated because the
- * activity database does not yet contain verified journey data.
+ * Does not invent driving times, routes or opening hours.
  */
 
 (() => {
@@ -29,7 +28,7 @@
 
         if (introduction) {
             introduction.textContent =
-                "Generate a suggested day out using your uncompleted experiences. Choose your available time, budget and dog preference.";
+                "Generate a suggested outing based on your available time, budget, interests and dog preferences.";
         }
 
         const style = document.createElement("style");
@@ -92,6 +91,7 @@
             .generated-day-meta {
                 color: var(--muted);
                 font-size: .9rem;
+                line-height: 1.5;
             }
 
             .generated-activity {
@@ -120,6 +120,7 @@
                 margin-top: 3px;
                 color: var(--muted);
                 font-size: .88rem;
+                line-height: 1.5;
             }
 
             .generated-day-summary {
@@ -175,7 +176,8 @@
             "Available activity time",
             "generator-duration",
             [
-                { value: "4", label: "Short outing — up to 4 hours" },
+                { value: "3", label: "Short outing — up to 3 hours" },
+                { value: "4", label: "Half day — up to 4 hours" },
                 { value: "6", label: "Most of the day — up to 6 hours" },
                 { value: "8", label: "Full day — up to 8 hours" }
             ]
@@ -238,18 +240,15 @@
         panel.append(controls, actions, results, message);
         feature.appendChild(panel);
 
-        let currentSuggestion = null;
-
         function getEligibleActivities() {
             return AdventurePlanner.getActivities().filter(activity => {
                 if (AdventurePlanner.isCompleted(activity.id)) {
                     return false;
                 }
 
-                if (
-                    !Number.isFinite(Number(activity.durationHours)) ||
-                    Number(activity.durationHours) <= 0
-                ) {
+                const duration = Number(activity.durationHours);
+
+                if (!Number.isFinite(duration) || duration <= 0) {
                     return false;
                 }
 
@@ -304,23 +303,27 @@
             const groups = new Map();
 
             eligible.forEach(activity => {
-                const key = activity.region || activity.destination;
+                const destination =
+                    (activity.destination || "").trim();
 
-                if (!groups.has(key)) {
-                    groups.set(key, []);
+                if (!destination) return;
+
+                if (!groups.has(destination)) {
+                    groups.set(destination, []);
                 }
 
-                groups.get(key).push(activity);
+                groups.get(destination).push(activity);
             });
 
             const suggestions = [];
 
-            groups.forEach((groupActivities, regionName) => {
-                const shuffled = shuffle(groupActivities);
+            groups.forEach((groupActivities, destination) => {
                 const selected = [];
                 let totalHours = 0;
 
-                for (const activity of shuffled) {
+                const candidates = shuffle(groupActivities);
+
+                for (const activity of candidates) {
                     const duration = Number(activity.durationHours);
 
                     if (totalHours + duration > maximumHours) {
@@ -329,21 +332,15 @@
 
                     selected.push(activity);
                     totalHours += duration;
-
-                    if (selected.length >= 4) break;
                 }
 
                 if (selected.length === 0) return;
 
-                const destinations = [
-                    ...new Set(selected.map(activity => activity.destination))
-                ];
-
                 suggestions.push({
-                    region: regionName,
+                    destination,
+                    region: selected[0].region || "",
                     activities: selected,
-                    totalHours,
-                    destinations
+                    totalHours
                 });
             });
 
@@ -357,18 +354,21 @@
             card.className = "generated-day";
 
             const heading = document.createElement("h4");
-            heading.textContent = suggestion.region;
+            heading.textContent = suggestion.destination;
 
             const intro = document.createElement("p");
             intro.className = "generated-day-intro";
-            intro.textContent =
-                "A suggested outing based on your available activities.";
+            intro.textContent = suggestion.region
+                ? `A suggested outing in ${suggestion.destination}, ${suggestion.region}.`
+                : `A suggested outing in ${suggestion.destination}.`;
 
             const activityContainer = document.createElement("div");
-
             const selectedIds = new Set(
                 suggestion.activities.map(activity => activity.id)
             );
+
+            const summary = document.createElement("div");
+            summary.className = "generated-day-summary";
 
             function updateSummary() {
                 const selected = suggestion.activities.filter(activity =>
@@ -455,15 +455,10 @@
                 activityContainer.appendChild(label);
             });
 
-            const summary = document.createElement("div");
-            summary.className = "generated-day-summary";
-
-            updateSummary();
-
             const note = document.createElement("p");
             note.className = "generated-day-meta";
             note.textContent =
-                "The activities are grouped by region, but may be in different towns. Driving time, route order, opening hours and bookings have not yet been verified. Check these before setting out.";
+                "These activities share the same listed destination. Driving time, exact route order, opening hours and bookings have not yet been verified. Check these before setting out.";
 
             const saveButton = document.createElement("button");
             saveButton.type = "button";
@@ -500,13 +495,15 @@
                 message.textContent =
                     "Your suggested day has been saved in My Saved Itineraries.";
 
+                saveButton.disabled = true;
+                saveButton.textContent = "Itinerary saved";
+
                 if (typeof renderDayPlanner === "function") {
                     renderDayPlanner();
                 }
-
-                saveButton.disabled = true;
-                saveButton.textContent = "Itinerary saved";
             });
+
+            updateSummary();
 
             card.append(
                 heading,
@@ -530,16 +527,14 @@
 
                 const empty = document.createElement("p");
                 empty.textContent =
-                    "There aren't enough uncompleted activities matching those preferences. Try increasing your time or budget, or changing your dog preference.";
+                    "No uncompleted activities match these preferences. Try increasing your available time or budget, or changing your dog preference.";
 
                 results.appendChild(empty);
-                currentSuggestion = null;
                 regenerateButton.hidden = true;
                 return;
             }
 
-            currentSuggestion = suggestions[0];
-            displaySuggestion(currentSuggestion);
+            displaySuggestion(suggestions[0]);
             regenerateButton.hidden = false;
         }
 
