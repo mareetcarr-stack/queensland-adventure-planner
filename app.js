@@ -3,7 +3,7 @@
 
 /*
  * Adventure Planner
- * Activity management, browser, completion tracking and backups
+ * Activity management, discovery, day planning and backups
  */
 
 const AdventurePlanner = (() => {
@@ -111,7 +111,43 @@ const AdventurePlanner = (() => {
         data.completedActivities =
             data.completedActivities.filter(id => id !== activityId);
 
+        data.savedItineraries = data.savedItineraries.map(itinerary => ({
+            ...itinerary,
+            activityIds: (itinerary.activityIds || []).filter(
+                id => id !== activityId
+            )
+        }));
+
         return saveData();
+    }
+
+    function saveItinerary(itinerary) {
+        const newItinerary = {
+            id: `itinerary-${Date.now()}`,
+            date: itinerary.date,
+            activityIds: [...itinerary.activityIds],
+            createdAt: new Date().toISOString()
+        };
+
+        data.savedItineraries.push(newItinerary);
+
+        if (saveData()) return newItinerary;
+
+        data.savedItineraries.pop();
+        return null;
+    }
+
+    function deleteItinerary(itineraryId) {
+        const previous = [...data.savedItineraries];
+
+        data.savedItineraries = data.savedItineraries.filter(
+            itinerary => itinerary.id !== itineraryId
+        );
+
+        if (saveData()) return true;
+
+        data.savedItineraries = previous;
+        return false;
     }
 
     function exportBackup() {
@@ -205,6 +241,8 @@ const AdventurePlanner = (() => {
         toggleCompleted,
         addActivity,
         deleteActivity,
+        saveItinerary,
+        deleteItinerary,
         exportBackup,
         importBackup
     };
@@ -213,7 +251,6 @@ const AdventurePlanner = (() => {
 
 /*
  * Insert generated sections before the footer.
- * This keeps the footer at the bottom of the page.
  */
 
 function appendAppSection(section) {
@@ -407,6 +444,7 @@ function createAddActivityForm() {
             form.reset();
             renderActivityBrowser();
             renderMyActivities();
+            renderDayPlanner();
         } else {
             message.textContent =
                 "Unable to save this activity. Check your browser storage.";
@@ -681,6 +719,7 @@ function renderActivityBrowser() {
             completeButton.addEventListener("click", () => {
                 AdventurePlanner.toggleCompleted(activity.id);
                 renderActivityBrowser();
+                renderDayPlanner();
             });
 
             card.append(
@@ -712,6 +751,330 @@ function renderActivityBrowser() {
     });
 
     renderActivities();
+}
+
+
+/*
+ * Day planner
+ */
+
+function renderDayPlanner() {
+    const existing = document.getElementById("day-planner");
+    if (existing) existing.remove();
+
+    const activities = AdventurePlanner.getActivities();
+
+    const section = document.createElement("section");
+    section.className = "feature";
+    section.id = "day-planner";
+
+    const heading = document.createElement("h2");
+    heading.textContent = "Plan My Day";
+
+    const introduction = document.createElement("p");
+    introduction.textContent =
+        "Choose experiences for an outing, select a date and save your day itinerary.";
+
+    const dateLabel = document.createElement("label");
+    dateLabel.className = "form-field";
+
+    const dateText = document.createElement("span");
+    dateText.textContent = "Date of your outing";
+
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.required = true;
+
+    const today = new Date();
+    const localToday = new Date(
+        today.getTime() - today.getTimezoneOffset() * 60000
+    ).toISOString().slice(0, 10);
+
+    dateInput.min = localToday;
+    dateInput.value = localToday;
+
+    dateLabel.append(dateText, dateInput);
+
+    const searchLabel = document.createElement("label");
+    searchLabel.className = "form-field";
+
+    const searchText = document.createElement("span");
+    searchText.textContent = "Find activities";
+
+    const searchInput = document.createElement("input");
+    searchInput.type = "search";
+    searchInput.placeholder = "Search by activity, destination or region...";
+
+    searchLabel.append(searchText, searchInput);
+
+    const selectionHeading = document.createElement("h3");
+    selectionHeading.textContent = "Choose your experiences";
+
+    const selectionHelp = document.createElement("p");
+    selectionHelp.textContent =
+        "Tick the activities you'd like to include. You can combine several experiences in the same destination.";
+
+    const activityList = document.createElement("div");
+    activityList.className = "day-planner-activities";
+
+    const summary = document.createElement("div");
+    summary.className = "day-planner-summary";
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.className = "add-activity-button";
+    saveButton.textContent = "Save Day Itinerary";
+
+    const message = document.createElement("p");
+    message.id = "day-planner-message";
+
+    const savedHeading = document.createElement("h3");
+    savedHeading.textContent = "My Saved Itineraries";
+
+    const savedList = document.createElement("div");
+    savedList.id = "saved-itineraries";
+
+    section.append(
+        heading,
+        introduction,
+        dateLabel,
+        searchLabel,
+        selectionHeading,
+        selectionHelp,
+        activityList,
+        summary,
+        saveButton,
+        message,
+        savedHeading,
+        savedList
+    );
+
+    appendAppSection(section);
+
+    const selectedIds = new Set();
+
+    function updateSummary() {
+        const selected = activities.filter(
+            activity => selectedIds.has(activity.id)
+        );
+
+        const totalHours = selected.reduce(
+            (total, activity) => total + Number(activity.durationHours || 0),
+            0
+        );
+
+        const knownCosts = selected
+            .filter(activity =>
+                activity.estimatedCost !== null &&
+                activity.estimatedCost !== undefined
+            )
+            .reduce(
+                (total, activity) => total + Number(activity.estimatedCost),
+                0
+            );
+
+        const unknownCostCount = selected.filter(
+            activity =>
+                activity.estimatedCost === null ||
+                activity.estimatedCost === undefined
+        ).length;
+
+        summary.replaceChildren();
+
+        const count = document.createElement("p");
+        count.textContent =
+            `${selected.length} activities selected`;
+
+        const duration = document.createElement("p");
+        duration.textContent =
+            `Combined activity time: ${totalHours.toFixed(1)} hours`;
+
+        const cost = document.createElement("p");
+
+        if (selected.length === 0) {
+            cost.textContent = "Known activity costs: $0";
+        } else if (unknownCostCount > 0) {
+            cost.textContent =
+                `Known costs: $${knownCosts.toFixed(2)} · ${unknownCostCount} activity cost(s) still unknown`;
+        } else {
+            cost.textContent =
+                `Combined known costs: $${knownCosts.toFixed(2)} per person`;
+        }
+
+        const note = document.createElement("p");
+        note.textContent =
+            "These figures exclude travel, meals and any costs not yet confirmed. Activity time does not include driving between locations.";
+
+        summary.append(count, duration, cost, note);
+    }
+
+    function renderActivityChoices() {
+        activityList.replaceChildren();
+
+        const term = searchInput.value.trim().toLowerCase();
+
+        const matching = activities.filter(activity => {
+            const searchable = [
+                activity.name,
+                activity.destination,
+                activity.region,
+                activity.description
+            ].join(" ").toLowerCase();
+
+            return !term || searchable.includes(term);
+        });
+
+        if (matching.length === 0) {
+            const empty = document.createElement("p");
+            empty.textContent = "No activities match your search.";
+            activityList.appendChild(empty);
+            return;
+        }
+
+        matching.forEach(activity => {
+            const label = document.createElement("label");
+            label.className = "day-planner-choice";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = selectedIds.has(activity.id);
+
+            checkbox.addEventListener("change", () => {
+                if (checkbox.checked) {
+                    selectedIds.add(activity.id);
+                } else {
+                    selectedIds.delete(activity.id);
+                }
+
+                updateSummary();
+            });
+
+            const details = document.createElement("span");
+
+            const name = document.createElement("strong");
+            name.textContent = activity.name;
+
+            const destination = document.createElement("span");
+            destination.textContent =
+                `${activity.destination} · ${activity.region}`;
+
+            const duration = document.createElement("span");
+            duration.textContent =
+                `${activity.durationHours} hours`;
+
+            details.append(name, destination, duration);
+            label.append(checkbox, details);
+            activityList.appendChild(label);
+        });
+    }
+
+    function renderSavedItineraries() {
+        savedList.replaceChildren();
+
+        const itineraries = [...AdventurePlanner.data.savedItineraries]
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (itineraries.length === 0) {
+            const empty = document.createElement("p");
+            empty.textContent =
+                "You haven't saved any day itineraries yet.";
+            savedList.appendChild(empty);
+            return;
+        }
+
+        itineraries.forEach(itinerary => {
+            const card = document.createElement("article");
+            card.className = "activity-card";
+
+            const date = document.createElement("h3");
+            date.textContent = new Date(
+                `${itinerary.date}T12:00:00`
+            ).toLocaleDateString("en-AU", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
+
+            const itineraryActivities = activities.filter(activity =>
+                (itinerary.activityIds || []).includes(activity.id)
+            );
+
+            const names = document.createElement("ul");
+
+            itineraryActivities.forEach(activity => {
+                const item = document.createElement("li");
+                item.textContent =
+                    `${activity.name} — ${activity.durationHours} hours`;
+                names.appendChild(item);
+            });
+
+            const totalHours = itineraryActivities.reduce(
+                (total, activity) =>
+                    total + Number(activity.durationHours || 0),
+                0
+            );
+
+            const duration = document.createElement("p");
+            duration.textContent =
+                `Combined activity time: ${totalHours.toFixed(1)} hours`;
+
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.className = "reset-filters";
+            deleteButton.textContent = "Delete itinerary";
+
+            deleteButton.addEventListener("click", () => {
+                if (!window.confirm("Delete this saved itinerary?")) return;
+
+                if (AdventurePlanner.deleteItinerary(itinerary.id)) {
+                    renderSavedItineraries();
+                } else {
+                    window.alert("Unable to delete this itinerary.");
+                }
+            });
+
+            card.append(date, names, duration, deleteButton);
+            savedList.appendChild(card);
+        });
+    }
+
+    searchInput.addEventListener("input", renderActivityChoices);
+
+    saveButton.addEventListener("click", () => {
+        if (!dateInput.value) {
+            message.textContent = "Please select a date for your outing.";
+            return;
+        }
+
+        if (selectedIds.size === 0) {
+            message.textContent =
+                "Please select at least one activity for your itinerary.";
+            return;
+        }
+
+        const saved = AdventurePlanner.saveItinerary({
+            date: dateInput.value,
+            activityIds: [...selectedIds]
+        });
+
+        if (!saved) {
+            message.textContent =
+                "Unable to save your itinerary. Check your browser storage.";
+            return;
+        }
+
+        message.textContent = "Your day itinerary has been saved.";
+
+        selectedIds.clear();
+        renderActivityChoices();
+        updateSummary();
+        renderSavedItineraries();
+    });
+
+    renderActivityChoices();
+    updateSummary();
+    renderSavedItineraries();
 }
 
 
@@ -775,6 +1138,7 @@ function renderMyActivities() {
             if (AdventurePlanner.deleteActivity(activity.id)) {
                 renderMyActivities();
                 renderActivityBrowser();
+                renderDayPlanner();
             } else {
                 window.alert("Unable to delete this activity.");
             }
@@ -803,7 +1167,7 @@ function createBackupSection() {
 
     const introduction = document.createElement("p");
     introduction.textContent =
-        "Save a copy of your personal activities, completion history and preferences. Keep this file somewhere safe.";
+        "Save a copy of your personal activities, completion history, itineraries and preferences. Keep this file somewhere safe.";
 
     const exportButton = document.createElement("button");
     exportButton.type = "button";
@@ -850,6 +1214,7 @@ function createBackupSection() {
 
             renderActivityBrowser();
             renderMyActivities();
+            renderDayPlanner();
         } catch (error) {
             message.textContent = `Restore failed: ${error.message}`;
         }
@@ -880,6 +1245,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderActivityBrowser();
     createAddActivityForm();
+    renderDayPlanner();
     renderMyActivities();
     createBackupSection();
 });
