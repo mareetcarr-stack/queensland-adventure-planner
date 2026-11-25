@@ -3,8 +3,8 @@
 
 /*
  * Holiday Planner
- * Multi-day trip planning, saved through the shared Adventure Planner
- * data store so holiday plans are included in backup exports.
+ * Create, edit, save and delete multi-day holidays.
+ * Uses the shared Adventure Planner data store and backup system.
  */
 
 (() => {
@@ -15,13 +15,10 @@
         return;
     }
 
-    function getActivities() {
-        if (window.AdventurePlanner) {
-            return window.AdventurePlanner.getActivities();
-        }
-
-        return window.ADVENTURE_ACTIVITIES || [];
-    }
+    const getActivities = () =>
+        window.AdventurePlanner
+            ? window.AdventurePlanner.getActivities()
+            : window.ADVENTURE_ACTIVITIES || [];
 
     function readHolidayPlans() {
         try {
@@ -40,7 +37,7 @@
                 ? stored.savedHolidayPlans
                 : [];
         } catch (error) {
-            console.error("Could not read saved holiday plans:", error);
+            console.error("Could not read saved holidays:", error);
             return [];
         }
     }
@@ -48,11 +45,7 @@
     function saveHolidayPlans(plans) {
         try {
             if (window.AdventurePlanner) {
-                const previousPlans = Array.isArray(
-                    window.AdventurePlanner.data.savedHolidayPlans
-                )
-                    ? [...window.AdventurePlanner.data.savedHolidayPlans]
-                    : [];
+                const previous = window.AdventurePlanner.data.savedHolidayPlans;
 
                 window.AdventurePlanner.data.savedHolidayPlans = plans;
 
@@ -60,9 +53,7 @@
                     return true;
                 }
 
-                window.AdventurePlanner.data.savedHolidayPlans =
-                    previousPlans;
-
+                window.AdventurePlanner.data.savedHolidayPlans = previous;
                 return false;
             }
 
@@ -79,26 +70,21 @@
 
             return true;
         } catch (error) {
-            console.error("Could not save holiday plans:", error);
+            console.error("Could not save holidays:", error);
             return false;
         }
     }
 
-    function makeElement(tag, className, text) {
-        const element = document.createElement(tag);
+    function element(tag, className = "", text = "") {
+        const node = document.createElement(tag);
 
-        if (className) {
-            element.className = className;
-        }
+        if (className) node.className = className;
+        if (text !== "") node.textContent = text;
 
-        if (text !== undefined) {
-            element.textContent = text;
-        }
-
-        return element;
+        return node;
     }
 
-    function makeDateString(date) {
+    function localDateString(date) {
         const local = new Date(
             date.getTime() - date.getTimezoneOffset() * 60000
         );
@@ -106,8 +92,8 @@
         return local.toISOString().slice(0, 10);
     }
 
-    function formatDate(dateString) {
-        return new Date(dateString + "T12:00:00").toLocaleDateString(
+    function formatDate(value) {
+        return new Date(value + "T12:00:00").toLocaleDateString(
             "en-AU",
             {
                 weekday: "long",
@@ -118,125 +104,102 @@
         );
     }
 
-    function daysBetween(start, end) {
+    function getDateRange(start, end) {
         const dates = [];
         const cursor = new Date(start + "T12:00:00");
         const finalDate = new Date(end + "T12:00:00");
 
         while (cursor <= finalDate) {
-            dates.push(makeDateString(cursor));
+            dates.push(localDateString(cursor));
             cursor.setDate(cursor.getDate() + 1);
         }
 
         return dates;
     }
 
-    const section = makeElement("section", "holiday-planner-section");
+    const section = element("section", "holiday-planner-section");
+    const heading = element("h2", "", "Build a Holiday");
 
-    const heading = makeElement(
-        "h2",
-        "",
-        "Build a Holiday"
-    );
-
-    const intro = makeElement(
+    const intro = element(
         "p",
         "",
-        "Create a multi-day trip, then choose different experiences for each day. Your plans are saved with your Adventure Planner data and included in backups."
+        "Create a multi-day trip and choose different experiences for each day. Your plans are saved with your Adventure Planner data and included in backups."
     );
 
-    const form = makeElement("form", "activity-form");
+    const form = element("form", "activity-form");
 
-    const tripNameLabel = makeElement("label", "form-field");
-    tripNameLabel.append(
-        makeElement("span", "", "Holiday name")
-    );
+    const nameLabel = element("label", "form-field");
+    nameLabel.appendChild(element("span", "", "Holiday name"));
 
-    const tripNameInput = document.createElement("input");
-    tripNameInput.type = "text";
-    tripNameInput.placeholder = "e.g. Sunshine Coast getaway";
-    tripNameInput.required = true;
-    tripNameLabel.appendChild(tripNameInput);
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.placeholder = "e.g. Sunshine Coast getaway";
+    nameInput.required = true;
+    nameLabel.appendChild(nameInput);
 
-    const startLabel = makeElement("label", "form-field");
-    startLabel.append(
-        makeElement("span", "", "Start date")
-    );
+    const startLabel = element("label", "form-field");
+    startLabel.appendChild(element("span", "", "Start date"));
 
     const startInput = document.createElement("input");
     startInput.type = "date";
     startInput.required = true;
     startLabel.appendChild(startInput);
 
-    const endLabel = makeElement("label", "form-field");
-    endLabel.append(
-        makeElement("span", "", "End date")
-    );
+    const endLabel = element("label", "form-field");
+    endLabel.appendChild(element("span", "", "End date"));
 
     const endInput = document.createElement("input");
     endInput.type = "date";
     endInput.required = true;
     endLabel.appendChild(endInput);
 
-    const today = makeDateString(new Date());
-
+    const today = localDateString(new Date());
     startInput.min = today;
     endInput.min = today;
 
     startInput.addEventListener("change", () => {
         endInput.min = startInput.value || today;
 
-        if (
-            endInput.value &&
-            endInput.value < startInput.value
-        ) {
+        if (endInput.value && endInput.value < startInput.value) {
             endInput.value = startInput.value;
         }
     });
 
-    const buildButton = makeElement(
+    const createButton = element(
         "button",
         "add-activity-button",
         "Create trip schedule"
     );
+    createButton.type = "submit";
 
-    buildButton.type = "submit";
+    form.append(nameLabel, startLabel, endLabel, createButton);
 
-    form.append(
-        tripNameLabel,
-        startLabel,
-        endLabel,
-        buildButton
-    );
-
-    const message = makeElement("p", "", "");
+    const message = element("p", "", "");
     message.id = "holiday-planner-message";
 
-    const editor = makeElement("div", "holiday-editor");
+    const editor = element("div", "holiday-editor");
     editor.id = "holiday-editor";
     editor.hidden = true;
 
-    const saveButton = makeElement(
+    const editorMessage = element("p", "", "");
+    editorMessage.id = "holiday-editor-message";
+
+    const saveButton = element(
         "button",
         "add-activity-button",
         "Save Holiday"
     );
-
     saveButton.type = "button";
 
-    const editorMessage = makeElement("p", "", "");
-    editorMessage.id = "holiday-editor-message";
-
-    const savedHeading = makeElement(
-        "h3",
-        "",
-        "My Saved Holidays"
+    const cancelButton = element(
+        "button",
+        "reset-filters",
+        "Cancel editing"
     );
+    cancelButton.type = "button";
 
-    const savedList = makeElement(
-        "div",
-        "saved-holiday-list"
-    );
+    const savedHeading = element("h3", "", "My Saved Holidays");
+    const savedList = element("div", "saved-holiday-list");
 
     section.append(
         heading,
@@ -253,38 +216,35 @@
     let currentTrip = null;
     let dayEditors = [];
 
-    function getAllAssignedIds() {
-        if (!currentTrip) {
-            return new Set();
-        }
+    function assignedActivityIds() {
+        if (!currentTrip) return new Set();
 
         return new Set(
             currentTrip.days.flatMap(day => day.activityIds)
         );
     }
 
-    function refreshAllDayOptions() {
-        dayEditors.forEach(dayEditor => {
-            dayEditor.populateOptions();
-        });
+    function refreshDayOptions() {
+        dayEditors.forEach(day => day.populateOptions());
     }
 
-    function createDayEditor(dayPlan, dayIndex) {
-        const card = makeElement(
-            "article",
-            "activity-card holiday-day-card"
+    function createDayEditor(day, index) {
+        const card = element("article", "activity-card holiday-day-card");
+
+        card.appendChild(
+            element(
+                "h3",
+                "",
+                `Day ${index + 1} — ${formatDate(day.date)}`
+            )
         );
 
-        const dayHeading = makeElement(
-            "h3",
-            "",
-            `Day ${dayIndex + 1} — ${formatDate(dayPlan.date)}`
-        );
-
-        const destinationNote = makeElement(
-            "p",
-            "",
-            "Choose experiences for this day. Activities already allocated to another day are excluded."
+        card.appendChild(
+            element(
+                "p",
+                "",
+                "Choose experiences for this day. Activities allocated to another day are excluded."
+            )
         );
 
         const search = document.createElement("input");
@@ -292,82 +252,71 @@
         search.placeholder = "Search activities or destinations...";
         search.setAttribute(
             "aria-label",
-            `Search activities for day ${dayIndex + 1}`
+            `Search activities for day ${index + 1}`
         );
 
-        const selectLabel = makeElement(
-            "label",
-            "form-field"
-        );
-
-        selectLabel.append(
-            makeElement("span", "", "Available activity")
-        );
+        const selectLabel = element("label", "form-field");
+        selectLabel.appendChild(element("span", "", "Available activity"));
 
         const select = document.createElement("select");
         selectLabel.appendChild(select);
 
-        const addButton = makeElement(
+        const addButton = element(
             "button",
             "reset-filters",
             "Add activity to this day"
         );
-
         addButton.type = "button";
 
-        const assignedList = makeElement(
-            "div",
-            "holiday-assigned-list"
-        );
-
-        const daySummary = makeElement(
-            "p",
-            "holiday-day-summary"
-        );
+        const assignedList = element("div", "holiday-assigned-list");
+        const summary = element("p", "holiday-day-summary");
 
         function populateOptions() {
             const term = search.value.trim().toLowerCase();
-            const assignedElsewhere = getAllAssignedIds();
-            const activities = getActivities();
+            const alreadyAssigned = assignedActivityIds();
 
             select.replaceChildren();
 
-            const placeholder = document.createElement("option");
+            const placeholder = element(
+                "option",
+                "",
+                "Select an activity..."
+            );
             placeholder.value = "";
-            placeholder.textContent = "Select an activity...";
             select.appendChild(placeholder);
 
-            const available = activities.filter(activity => {
-                if (assignedElsewhere.has(activity.id)) {
-                    return false;
-                }
+            const available = getActivities()
+                .filter(activity => !alreadyAssigned.has(activity.id))
+                .filter(activity => {
+                    const searchable = [
+                        activity.name,
+                        activity.destination,
+                        activity.region,
+                        activity.description,
+                        ...(activity.category || [])
+                    ].join(" ").toLowerCase();
 
-                const searchable = [
-                    activity.name,
-                    activity.destination,
-                    activity.region,
-                    activity.description,
-                    ...(activity.category || [])
-                ].join(" ").toLowerCase();
+                    return !term || searchable.includes(term);
+                })
+                .sort((a, b) => a.name.localeCompare(b.name));
 
-                return !term || searchable.includes(term);
+            available.forEach(activity => {
+                const option = element(
+                    "option",
+                    "",
+                    `${activity.name} — ${activity.destination}`
+                );
+                option.value = activity.id;
+                select.appendChild(option);
             });
 
-            available
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .forEach(activity => {
-                    const option = document.createElement("option");
-                    option.value = activity.id;
-                    option.textContent =
-                        `${activity.name} — ${activity.destination}`;
-
-                    select.appendChild(option);
-                });
-
-            if (available.length === 0) {
-                const none = document.createElement("option");
+            if (!available.length) {
+                const none = element(
+                    "option",
+                    "",
+                    "No available activities match"
+                );
                 none.value = "";
-                none.textContent = "No available activities match";
                 select.appendChild(none);
             }
         }
@@ -375,63 +324,52 @@
         function renderAssigned() {
             assignedList.replaceChildren();
 
-            const activities = getActivities();
-
-            const assigned = dayPlan.activityIds
-                .map(id => activities.find(activity => activity.id === id))
+            const activities = day.activityIds
+                .map(id => getActivities().find(item => item.id === id))
                 .filter(Boolean);
 
-            if (assigned.length === 0) {
+            if (!activities.length) {
                 assignedList.appendChild(
-                    makeElement(
-                        "p",
-                        "",
-                        "No activities allocated yet."
-                    )
+                    element("p", "", "No activities allocated yet.")
                 );
             }
 
-            assigned.forEach(activity => {
-                const item = makeElement(
-                    "div",
-                    "holiday-assigned-item"
-                );
+            activities.forEach(activity => {
+                const item = element("div", "holiday-assigned-item");
 
-                const details = makeElement(
+                const details = element(
                     "span",
                     "",
                     `${activity.name} · ${activity.durationHours || 0} hours`
                 );
 
-                const remove = makeElement(
+                const removeButton = element(
                     "button",
                     "reset-filters",
                     "Remove"
                 );
+                removeButton.type = "button";
 
-                remove.type = "button";
-
-                remove.addEventListener("click", () => {
-                    dayPlan.activityIds =
-                        dayPlan.activityIds.filter(
-                            id => id !== activity.id
-                        );
+                removeButton.addEventListener("click", () => {
+                    day.activityIds = day.activityIds.filter(
+                        id => id !== activity.id
+                    );
 
                     renderAssigned();
-                    refreshAllDayOptions();
+                    refreshDayOptions();
                 });
 
-                item.append(details, remove);
+                item.append(details, removeButton);
                 assignedList.appendChild(item);
             });
 
-            const totalHours = assigned.reduce(
+            const hours = activities.reduce(
                 (total, activity) =>
                     total + Number(activity.durationHours || 0),
                 0
             );
 
-            const knownCost = assigned
+            const knownCost = activities
                 .filter(activity =>
                     activity.estimatedCost !== null &&
                     activity.estimatedCost !== undefined
@@ -442,127 +380,126 @@
                     0
                 );
 
-            const unknownCosts = assigned.filter(
+            const unknownCosts = activities.filter(
                 activity =>
                     activity.estimatedCost === null ||
                     activity.estimatedCost === undefined
             ).length;
 
-            daySummary.textContent =
-                `${assigned.length} activities · ` +
-                `${totalHours.toFixed(1)} hours · ` +
+            summary.textContent =
+                `${activities.length} activities · ${hours.toFixed(1)} hours · ` +
                 `Known activity costs: $${knownCost.toFixed(2)}` +
-                (
-                    unknownCosts
-                        ? ` · ${unknownCosts} cost(s) unconfirmed`
-                        : ""
-                );
+                (unknownCosts
+                    ? ` · ${unknownCosts} cost(s) unconfirmed`
+                    : "");
         }
 
         addButton.addEventListener("click", () => {
-            if (!select.value) {
-                return;
-            }
+            if (!select.value) return;
 
-            if (getAllAssignedIds().has(select.value)) {
+            if (assignedActivityIds().has(select.value)) {
                 editorMessage.textContent =
                     "That activity is already allocated to another day.";
-
                 return;
             }
 
-            dayPlan.activityIds.push(select.value);
-
+            day.activityIds.push(select.value);
             editorMessage.textContent = "";
 
             renderAssigned();
-            refreshAllDayOptions();
+            refreshDayOptions();
         });
 
         search.addEventListener("input", populateOptions);
 
         card.append(
-            dayHeading,
-            destinationNote,
             search,
             selectLabel,
             addButton,
             assignedList,
-            daySummary
+            summary
         );
 
         renderAssigned();
         populateOptions();
 
-        return {
-            card,
-            populateOptions
-        };
+        return { card, populateOptions };
     }
 
     function renderEditor() {
         editor.replaceChildren();
         dayEditors = [];
 
-        const title = makeElement(
+        const title = element(
             "h3",
             "",
-            currentTrip.name
+            currentTrip.id ? "Edit Holiday" : "Build Your Holiday"
         );
 
-        const dates = makeElement(
+        const editNameLabel = element("label", "form-field");
+        editNameLabel.appendChild(element("span", "", "Holiday name"));
+
+        const editNameInput = document.createElement("input");
+        editNameInput.type = "text";
+        editNameInput.required = true;
+        editNameInput.value = currentTrip.name;
+
+        editNameInput.addEventListener("input", () => {
+            currentTrip.name = editNameInput.value.trim();
+        });
+
+        editNameLabel.appendChild(editNameInput);
+
+        const dates = element(
             "p",
             "",
             `${formatDate(currentTrip.startDate)} to ` +
-            `${formatDate(currentTrip.endDate)} · ` +
-            `${currentTrip.days.length} days`
+            `${formatDate(currentTrip.endDate)} · ${currentTrip.days.length} days`
         );
 
-        editor.append(title, dates);
+        editor.append(title, editNameLabel, dates);
 
-        currentTrip.days.forEach((dayPlan, index) => {
-            const dayEditor = createDayEditor(
-                dayPlan,
-                index
-            );
-
+        currentTrip.days.forEach((day, index) => {
+            const dayEditor = createDayEditor(day, index);
             dayEditors.push(dayEditor);
             editor.appendChild(dayEditor.card);
         });
 
-        editor.append(
-            saveButton,
-            editorMessage
-        );
+        saveButton.textContent = currentTrip.id
+            ? "Update Holiday"
+            : "Save Holiday";
 
+        editor.append(saveButton, cancelButton, editorMessage);
         editor.hidden = false;
+    }
+
+    function closeEditor() {
+        currentTrip = null;
+        dayEditors = [];
+        editor.replaceChildren();
+        editor.hidden = true;
+        editorMessage.textContent = "";
+        saveButton.textContent = "Save Holiday";
     }
 
     form.addEventListener("submit", event => {
         event.preventDefault();
 
-        const name = tripNameInput.value.trim();
+        const name = nameInput.value.trim();
         const startDate = startInput.value;
         const endDate = endInput.value;
 
-        if (
-            !name ||
-            !startDate ||
-            !endDate ||
-            endDate < startDate
-        ) {
+        if (!name || !startDate || !endDate || endDate < startDate) {
             message.textContent =
                 "Please enter a holiday name and a valid date range.";
-
             return;
         }
 
-        const dates = daysBetween(startDate, endDate);
+        const dates = getDateRange(startDate, endDate);
 
         if (dates.length > 60) {
             message.textContent =
                 "Please create trips of 60 days or fewer.";
-
             return;
         }
 
@@ -576,34 +513,45 @@
             }))
         };
 
-        editorMessage.textContent = "";
         message.textContent = "";
-
+        editorMessage.textContent = "";
         renderEditor();
+
+        editor.scrollIntoView({
+            behaviour: "smooth",
+            block: "start"
+        });
     });
 
     saveButton.addEventListener("click", () => {
-        if (!currentTrip) {
+        if (!currentTrip) return;
+
+        currentTrip.name = currentTrip.name.trim();
+
+        if (!currentTrip.name) {
+            editorMessage.textContent =
+                "Please enter a name for this holiday.";
             return;
         }
 
-        const assignedCount = currentTrip.days.reduce(
-            (total, day) =>
-                total + day.activityIds.length,
+        const activityCount = currentTrip.days.reduce(
+            (total, day) => total + day.activityIds.length,
             0
         );
 
-        if (assignedCount === 0) {
+        if (!activityCount) {
             editorMessage.textContent =
                 "Add at least one activity before saving your holiday.";
-
             return;
         }
 
         const plans = readHolidayPlans();
+        const existingIndex = currentTrip.id
+            ? plans.findIndex(plan => plan.id === currentTrip.id)
+            : -1;
 
-        const plan = {
-            id: `holiday-${Date.now()}`,
+        const updatedPlan = {
+            id: currentTrip.id || `holiday-${Date.now()}`,
             name: currentTrip.name,
             startDate: currentTrip.startDate,
             endDate: currentTrip.endDate,
@@ -611,65 +559,80 @@
                 date: day.date,
                 activityIds: [...day.activityIds]
             })),
-            createdAt: new Date().toISOString()
+            createdAt: currentTrip.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
 
-        plans.push(plan);
+        if (existingIndex >= 0) {
+            plans[existingIndex] = updatedPlan;
+        } else {
+            plans.push(updatedPlan);
+        }
 
         if (!saveHolidayPlans(plans)) {
             editorMessage.textContent =
                 "Unable to save. Check your browser storage.";
-
             return;
         }
 
-        editorMessage.textContent =
-            "Holiday saved successfully and included in your Adventure Planner data.";
+        editorMessage.textContent = existingIndex >= 0
+            ? "Holiday updated successfully."
+            : "Holiday saved successfully and included in your Adventure Planner data.";
 
         renderSavedHolidays();
     });
 
+    cancelButton.addEventListener("click", () => {
+        closeEditor();
+    });
+
+    function editHoliday(plan) {
+        currentTrip = {
+            id: plan.id,
+            name: plan.name,
+            startDate: plan.startDate,
+            endDate: plan.endDate,
+            createdAt: plan.createdAt,
+            days: (plan.days || []).map(day => ({
+                date: day.date,
+                activityIds: [...(day.activityIds || [])]
+            }))
+        };
+
+        editorMessage.textContent = "";
+        renderEditor();
+
+        editor.scrollIntoView({
+            behaviour: "smooth",
+            block: "start"
+        });
+    }
+
     function renderSavedHolidays() {
         savedList.replaceChildren();
 
-        const plans = readHolidayPlans().sort(
+        const plans = [...readHolidayPlans()].sort(
             (a, b) => a.startDate.localeCompare(b.startDate)
         );
 
-        if (plans.length === 0) {
+        if (!plans.length) {
             savedList.appendChild(
-                makeElement(
-                    "p",
-                    "",
-                    "You haven't saved any holidays yet."
-                )
+                element("p", "", "You haven't saved any holidays yet.")
             );
-
             return;
         }
 
         plans.forEach(plan => {
-            const card = makeElement(
-                "article",
-                "activity-card"
-            );
+            const card = element("article", "activity-card");
+            const title = element("h3", "", plan.name);
 
-            const title = makeElement(
-                "h3",
-                "",
-                plan.name
-            );
-
-            const dateRange = makeElement(
+            const dateRange = element(
                 "p",
                 "",
                 `${formatDate(plan.startDate)} to ${formatDate(plan.endDate)}`
             );
 
-            const dayList = makeElement(
-                "div",
-                "saved-holiday-days"
-            );
+            const dayList = element("div", "saved-holiday-days");
 
             let totalActivities = 0;
             let totalHours = 0;
@@ -677,13 +640,10 @@
             let unknownCosts = 0;
 
             (plan.days || []).forEach((day, index) => {
-                const dayBlock = makeElement(
-                    "div",
-                    "saved-holiday-day"
-                );
+                const dayBlock = element("div", "saved-holiday-day");
 
                 dayBlock.appendChild(
-                    makeElement(
+                    element(
                         "strong",
                         "",
                         `Day ${index + 1} — ${formatDate(day.date)}`
@@ -691,45 +651,34 @@
                 );
 
                 const list = document.createElement("ul");
-                const activities = getActivities();
 
                 (day.activityIds || []).forEach(id => {
-                    const activity = activities.find(
+                    const activity = getActivities().find(
                         item => item.id === id
                     );
 
-                    if (!activity) {
-                        return;
-                    }
+                    if (!activity) return;
 
-                    totalActivities += 1;
-                    totalHours += Number(
-                        activity.durationHours || 0
-                    );
+                    totalActivities++;
+                    totalHours += Number(activity.durationHours || 0);
 
                     if (
                         activity.estimatedCost === null ||
                         activity.estimatedCost === undefined
                     ) {
-                        unknownCosts += 1;
+                        unknownCosts++;
                     } else {
-                        knownCost += Number(
-                            activity.estimatedCost
-                        );
+                        knownCost += Number(activity.estimatedCost);
                     }
 
-                    const li = document.createElement("li");
-                    li.textContent = activity.name;
-                    list.appendChild(li);
+                    list.appendChild(
+                        element("li", "", activity.name)
+                    );
                 });
 
                 if (!list.children.length) {
                     dayBlock.appendChild(
-                        makeElement(
-                            "p",
-                            "",
-                            "No activities planned."
-                        )
+                        element("p", "", "No activities planned.")
                     );
                 } else {
                     dayBlock.appendChild(list);
@@ -738,31 +687,35 @@
                 dayList.appendChild(dayBlock);
             });
 
-            const summary = makeElement(
+            const summary = element(
                 "p",
                 "",
-                `${totalActivities} activities · ` +
-                `${totalHours.toFixed(1)} hours · ` +
+                `${totalActivities} activities · ${totalHours.toFixed(1)} hours · ` +
                 `Known activity costs: $${knownCost.toFixed(2)}` +
-                (
-                    unknownCosts
-                        ? ` · ${unknownCosts} cost(s) unconfirmed`
-                        : ""
-                )
+                (unknownCosts
+                    ? ` · ${unknownCosts} cost(s) unconfirmed`
+                    : "")
             );
 
-            const deleteButton = makeElement(
+            const actions = element("div", "holiday-actions");
+
+            const editButton = element(
+                "button",
+                "reset-filters",
+                "Edit holiday"
+            );
+            editButton.type = "button";
+            editButton.addEventListener("click", () => editHoliday(plan));
+
+            const deleteButton = element(
                 "button",
                 "reset-filters",
                 "Delete holiday"
             );
-
             deleteButton.type = "button";
 
             deleteButton.addEventListener("click", () => {
-                if (!window.confirm(
-                    `Delete the holiday "${plan.name}"?`
-                )) {
+                if (!window.confirm(`Delete the holiday "${plan.name}"?`)) {
                     return;
                 }
 
@@ -771,29 +724,23 @@
                 );
 
                 if (saveHolidayPlans(remaining)) {
+                    if (currentTrip && currentTrip.id === plan.id) {
+                        closeEditor();
+                    }
+
                     renderSavedHolidays();
                 } else {
-                    window.alert(
-                        "Unable to delete this holiday."
-                    );
+                    window.alert("Unable to delete this holiday.");
                 }
             });
 
-            card.append(
-                title,
-                dateRange,
-                dayList,
-                summary,
-                deleteButton
-            );
-
+            actions.append(editButton, deleteButton);
+            card.append(title, dateRange, dayList, summary, actions);
             savedList.appendChild(card);
         });
     }
 
     renderSavedHolidays();
 
-    console.log(
-        "Holiday Planner initialised successfully."
-    );
+    console.log("Holiday Planner initialised successfully.");
 })();
