@@ -1,3 +1,4 @@
+
 "use strict";
 
 /*
@@ -75,6 +76,13 @@ function createActivityBrowser() {
 
     const activities = window.ADVENTURE_ACTIVITIES || [];
 
+    const main = document.querySelector("main");
+
+    if (!main) {
+        console.error("Unable to find the main content area.");
+        return;
+    }
+
     const section = document.createElement("section");
     section.className = "feature";
     section.id = "activity-browser";
@@ -93,7 +101,10 @@ function createActivityBrowser() {
     search.type = "search";
     search.id = "activity-search";
     search.placeholder = "Search activities or destinations...";
-    search.setAttribute("aria-label", "Search activities or destinations");
+    search.setAttribute(
+        "aria-label",
+        "Search activities or destinations"
+    );
 
     const results = document.createElement("div");
     results.id = "activity-results";
@@ -106,14 +117,8 @@ function createActivityBrowser() {
         results
     );
 
-    const main = document.querySelector("main");
-    const footer = document.querySelector("footer");
-
-    if (main && footer) {
-        main.insertBefore(section, footer);
-    } else if (main) {
-        main.appendChild(section);
-    }
+    // Add the activity browser to the main content area.
+    main.appendChild(section);
 
     function renderActivities(searchTerm = "") {
 
@@ -192,6 +197,10 @@ function createActivityBrowser() {
     });
 
     renderActivities();
+
+    console.log(
+        `Activity browser loaded: ${activities.length} experiences.`
+    );
 }
 
 
