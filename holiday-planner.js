@@ -4,6 +4,7 @@
 /*
  * Holiday Planner
  * Create, edit, save and delete multi-day holidays.
+ * Supports changing dates while preserving activities on retained dates.
  * Uses the shared Adventure Planner data store and backup system.
  */
 
@@ -228,6 +229,41 @@
         dayEditors.forEach(day => day.populateOptions());
     }
 
+    function updateTripDates(newStart, newEnd) {
+        if (!currentTrip || !newStart || !newEnd || newEnd < newStart) {
+            return false;
+        }
+
+        const dates = getDateRange(newStart, newEnd);
+
+        if (dates.length > 60) {
+            editorMessage.textContent =
+                "Please create trips of 60 days or fewer.";
+            return false;
+        }
+
+        const existingDays = new Map(
+            currentTrip.days.map(day => [
+                day.date,
+                [...day.activityIds]
+            ])
+        );
+
+        currentTrip.days = dates.map(date => ({
+            date,
+            activityIds: existingDays.get(date) || []
+        }));
+
+        currentTrip.startDate = newStart;
+        currentTrip.endDate = newEnd;
+
+        editorMessage.textContent =
+            "Dates updated. Activities on retained dates have been preserved.";
+
+        renderEditor();
+        return true;
+    }
+
     function createDayEditor(day, index) {
         const card = element("article", "activity-card holiday-day-card");
 
@@ -450,6 +486,55 @@
 
         editNameLabel.appendChild(editNameInput);
 
+        const dateFields = element("div", "activity-form");
+
+        const editStartLabel = element("label", "form-field");
+        editStartLabel.appendChild(element("span", "", "Start date"));
+
+        const editStartInput = document.createElement("input");
+        editStartInput.type = "date";
+        editStartInput.value = currentTrip.startDate;
+        editStartLabel.appendChild(editStartInput);
+
+        const editEndLabel = element("label", "form-field");
+        editEndLabel.appendChild(element("span", "", "End date"));
+
+        const editEndInput = document.createElement("input");
+        editEndInput.type = "date";
+        editEndInput.value = currentTrip.endDate;
+        editEndLabel.appendChild(editEndInput);
+
+        editStartInput.addEventListener("change", () => {
+            if (!editStartInput.value || !editEndInput.value) return;
+
+            if (editEndInput.value < editStartInput.value) {
+                editEndInput.value = editStartInput.value;
+            }
+
+            updateTripDates(
+                editStartInput.value,
+                editEndInput.value
+            );
+        });
+
+        editEndInput.addEventListener("change", () => {
+            if (!editStartInput.value || !editEndInput.value) return;
+
+            if (editEndInput.value < editStartInput.value) {
+                editorMessage.textContent =
+                    "The end date cannot be before the start date.";
+                editEndInput.value = currentTrip.endDate;
+                return;
+            }
+
+            updateTripDates(
+                editStartInput.value,
+                editEndInput.value
+            );
+        });
+
+        dateFields.append(editStartLabel, editEndLabel);
+
         const dates = element(
             "p",
             "",
@@ -457,7 +542,7 @@
             `${formatDate(currentTrip.endDate)} · ${currentTrip.days.length} days`
         );
 
-        editor.append(title, editNameLabel, dates);
+        editor.append(title, editNameLabel, dateFields, dates);
 
         currentTrip.days.forEach((day, index) => {
             const dayEditor = createDayEditor(day, index);
@@ -479,7 +564,6 @@
         editor.replaceChildren();
         editor.hidden = true;
         editorMessage.textContent = "";
-        saveButton.textContent = "Save Holiday";
     }
 
     form.addEventListener("submit", event => {
@@ -518,7 +602,7 @@
         renderEditor();
 
         editor.scrollIntoView({
-            behaviour: "smooth",
+            behavior: "smooth",
             block: "start"
         });
     });
@@ -582,9 +666,7 @@
         renderSavedHolidays();
     });
 
-    cancelButton.addEventListener("click", () => {
-        closeEditor();
-    });
+    cancelButton.addEventListener("click", closeEditor);
 
     function editHoliday(plan) {
         currentTrip = {
@@ -603,7 +685,7 @@
         renderEditor();
 
         editor.scrollIntoView({
-            behaviour: "smooth",
+            behavior: "smooth",
             block: "start"
         });
     }
@@ -671,9 +753,7 @@
                         knownCost += Number(activity.estimatedCost);
                     }
 
-                    list.appendChild(
-                        element("li", "", activity.name)
-                    );
+                    list.appendChild(element("li", "", activity.name));
                 });
 
                 if (!list.children.length) {
