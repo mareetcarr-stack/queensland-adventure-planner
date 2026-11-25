@@ -2,7 +2,7 @@
 "use strict";
 
 const ADVENTURE_ACTIVITIES = [
-  // ORIGINAL 8 ACTIVITIES
+  // ORIGINAL EXPERIENCES — MORETON BAY AND SUNSHINE COAST
 
   {
     id: "redcliffe-botanic-gardens",
@@ -125,7 +125,7 @@ const ADVENTURE_ACTIVITIES = [
     status: "not-visited"
   },
 
-  // NEW EXPERIENCES — MORETON BAY
+  // MORETON BAY
 
   {
     id: "scarborough-waterfront",
@@ -218,7 +218,7 @@ const ADVENTURE_ACTIVITIES = [
     status: "not-visited"
   },
 
-  // NEW EXPERIENCES — BRISBANE
+  // BRISBANE
 
   {
     id: "shorncliffe-pier",
@@ -341,7 +341,7 @@ const ADVENTURE_ACTIVITIES = [
     status: "not-visited"
   },
 
-  // NEW EXPERIENCES — SUNSHINE COAST AND HINTERLAND
+  // SUNSHINE COAST AND HINTERLAND
 
   {
     id: "point-cartwright-loop",
@@ -364,7 +364,7 @@ const ADVENTURE_ACTIVITIES = [
     destination: "Eumundi",
     region: "Sunshine Coast Hinterland",
     category: ["markets", "shopping", "food", "arts"],
-    description: "Browse one of the region's best-known markets for artisan products, clothing, food and local creations.",
+    description: "Browse artisan products, clothing, food and local creations.",
     cost: "variable",
     estimatedCost: null,
     durationHours: 3,
@@ -430,6 +430,273 @@ const ADVENTURE_ACTIVITIES = [
     durationHours: 1.5,
     dogPolicy: "verify",
     indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+
+  // NEW EXPERIENCES — ISLANDS AND REDLANDS
+
+  {
+    id: "north-stradbroke-island-day-trip",
+    name: "North Stradbroke Island Day Trip",
+    destination: "North Stradbroke Island",
+    region: "Redlands and Islands",
+    category: ["island", "ferry", "beach", "scenic", "nature"],
+    description: "Take the ferry to Minjerribah and explore its beaches, coastal villages and island scenery. Plan transport on the island before travelling.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 8,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "moreton-island-day-trip",
+    name: "Moreton Island Adventure",
+    destination: "Moreton Island",
+    region: "Moreton Bay Islands",
+    category: ["island", "ferry", "beach", "adventure", "nature"],
+    description: "Visit Mulgumpin for island scenery, beaches and the famous Tangalooma Wrecks. Ferry and island transport arrangements are required.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 8,
+    dogPolicy: "restricted",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "cleveland-point-waterfront",
+    name: "Cleveland Point Waterfront",
+    destination: "Cleveland",
+    region: "Redlands",
+    category: ["waterfront", "scenic", "picnic", "photography"],
+    description: "Enjoy the waterfront, historic lighthouse views and a relaxed picnic at Cleveland Point.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 1.5,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+  {
+    id: "sandstone-point-waterfront",
+    name: "Sandstone Point Waterfront",
+    destination: "Sandstone Point",
+    region: "Moreton Bay",
+    category: ["waterfront", "scenic", "food", "relaxation"],
+    description: "Enjoy the waterfront setting and views towards Bribie Island, with the option of stopping for a meal.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 2,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+
+  // NEW EXPERIENCES — GOLD COAST
+
+  {
+    id: "burleigh-headland-walk",
+    name: "Burleigh Headland Walk",
+    destination: "Burleigh Heads",
+    region: "Gold Coast",
+    category: ["walking", "scenic", "nature", "beach", "photography"],
+    description: "Explore the coastal headland tracks and enjoy views over the ocean and Gold Coast skyline. Check park access rules before bringing dogs.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 2,
+    dogPolicy: "restricted",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+  {
+    id: "broadwater-parklands",
+    name: "Gold Coast Broadwater Parklands",
+    destination: "Southport",
+    region: "Gold Coast",
+    category: ["waterfront", "picnic", "walking", "relaxation"],
+    description: "Enjoy the waterfront parklands, open lawns, walking paths and views across the Broadwater.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 2.5,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+  {
+    id: "tamborine-mountain-gallery-walk",
+    name: "Tamborine Mountain Gallery Walk",
+    destination: "Tamborine Mountain",
+    region: "Gold Coast Hinterland",
+    category: ["township", "shopping", "food", "arts", "scenic"],
+    description: "Browse galleries, boutiques, craft shops and cafés along the mountain's well-known shopping strip.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 3,
+    dogPolicy: "verify",
+    indoorOutdoor: "mixed",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+
+  // NEW EXPERIENCES — NORTHERN NSW
+
+  {
+    id: "byron-bay-lighthouse-walk",
+    name: "Cape Byron Lighthouse Walk",
+    destination: "Byron Bay",
+    region: "Northern NSW",
+    category: ["walking", "lighthouse", "scenic", "photography", "nature"],
+    description: "Walk the coastal track to Australia's easternmost mainland point and visit the lighthouse precinct.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 2,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "lennox-head-lake-ainsworth",
+    name: "Lake Ainsworth and Lennox Head",
+    destination: "Lennox Head",
+    region: "Northern NSW",
+    category: ["lake", "beach", "swimming", "picnic", "nature"],
+    description: "Visit the tea-tree-stained freshwater lake and nearby coastal village. Check swimming conditions and local access rules.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 2.5,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "brunswick-heads-exploration",
+    name: "Explore Brunswick Heads",
+    destination: "Brunswick Heads",
+    region: "Northern NSW",
+    category: ["waterfront", "beach", "township", "food", "relaxation"],
+    description: "Discover the river, beaches, village shops and relaxed coastal atmosphere.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 3,
+    dogPolicy: "verify",
+    indoorOutdoor: "mixed",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "husk-distillers-visit",
+    name: "Visit Husk Distillers",
+    destination: "Tintenbar",
+    region: "Northern NSW",
+    category: ["distillery", "food", "drinks", "countryside"],
+    description: "Visit the Husk Distillers estate near the Byron Bay hinterland. Check tour availability, tasting options and transport arrangements.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 2.5,
+    dogPolicy: "verify",
+    indoorOutdoor: "mixed",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "bangalow-village",
+    name: "Explore Bangalow Village",
+    destination: "Bangalow",
+    region: "Northern NSW",
+    category: ["township", "shopping", "food", "heritage"],
+    description: "Explore the historic village, independent shops, cafés and heritage streetscape.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 2.5,
+    dogPolicy: "verify",
+    indoorOutdoor: "mixed",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "crystal-castle-visit",
+    name: "Crystal Castle and Shambhala Gardens",
+    destination: "Montecollum",
+    region: "Northern NSW",
+    category: ["gardens", "attraction", "wellbeing", "nature", "unique"],
+    description: "Explore the gardens, sculptures, crystals and peaceful rainforest setting. Admission applies and facilities should be checked before visiting.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 3,
+    dogPolicy: "restricted",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+  {
+    id: "minyon-falls-lookout",
+    name: "Minyon Falls Lookout",
+    destination: "Nightcap National Park",
+    region: "Northern NSW",
+    category: ["waterfall", "scenic", "nature", "photography", "walking"],
+    description: "Visit the dramatic waterfall lookout in Nightcap National Park. Check track conditions and park alerts before travelling.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 2,
+    dogPolicy: "restricted",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: true,
+    status: "not-visited"
+  },
+
+  // NEW EXPERIENCES — COUNTRY AND SCENIC OUTINGS
+
+  {
+    id: "wivenhoe-dam-picnic",
+    name: "Wivenhoe Dam Scenic Picnic",
+    destination: "Wivenhoe Dam",
+    region: "Brisbane Hinterland",
+    category: ["scenic", "picnic", "waterfront", "photography", "relaxation"],
+    description: "Enjoy the expansive dam views and find a peaceful picnic spot. Check public access and facilities before setting out.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 3,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+  {
+    id: "mount-mee-scenic-drive",
+    name: "Mount Mee Scenic Drive",
+    destination: "Mount Mee",
+    region: "Moreton Bay Hinterland",
+    category: ["scenic-drive", "lookout", "nature", "photography"],
+    description: "Take a scenic drive through the Mount Mee area, stopping at suitable viewpoints and picnic areas. Check road conditions and park boundaries.",
+    cost: "free",
+    estimatedCost: 0,
+    durationHours: 4,
+    dogPolicy: "verify",
+    indoorOutdoor: "outdoor",
+    overnightSuitable: false,
+    status: "not-visited"
+  },
+  {
+    id: "dayboro-country-day",
+    name: "Dayboro Country Village Day",
+    destination: "Dayboro",
+    region: "Moreton Bay Hinterland",
+    category: ["township", "food", "scenic", "shopping"],
+    description: "Enjoy a country-style day out exploring the village, local cafés and surrounding countryside.",
+    cost: "variable",
+    estimatedCost: null,
+    durationHours: 3,
+    dogPolicy: "verify",
+    indoorOutdoor: "mixed",
     overnightSuitable: false,
     status: "not-visited"
   }
