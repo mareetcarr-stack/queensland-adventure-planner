@@ -7,7 +7,6 @@
  */
 
 const AdventurePlanner = (() => {
-
     const CONFIG = {
         appName: "Adventure Planner",
         homeLocation: "Clontarf, Queensland",
@@ -53,10 +52,7 @@ const AdventurePlanner = (() => {
 
     function saveData() {
         try {
-            localStorage.setItem(
-                CONFIG.storageKey,
-                JSON.stringify(data)
-            );
+            localStorage.setItem(CONFIG.storageKey, JSON.stringify(data));
             return true;
         } catch (error) {
             console.error("Unable to save data:", error);
@@ -98,9 +94,7 @@ const AdventurePlanner = (() => {
 
         data.activities.push(newActivity);
 
-        if (saveData()) {
-            return newActivity;
-        }
+        if (saveData()) return newActivity;
 
         data.activities.pop();
         return null;
@@ -114,7 +108,6 @@ const AdventurePlanner = (() => {
         if (index === -1) return false;
 
         data.activities.splice(index, 1);
-
         data.completedActivities =
             data.completedActivities.filter(id => id !== activityId);
 
@@ -122,7 +115,6 @@ const AdventurePlanner = (() => {
     }
 
     function exportBackup() {
-
         const backup = {
             application: CONFIG.appName,
             version: 1,
@@ -136,8 +128,8 @@ const AdventurePlanner = (() => {
         );
 
         const url = URL.createObjectURL(blob);
-
         const link = document.createElement("a");
+
         link.href = url;
         link.download = "adventure-planner-backup.json";
 
@@ -145,11 +137,10 @@ const AdventurePlanner = (() => {
         link.click();
         link.remove();
 
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function importBackup(backup) {
-
         if (
             !backup ||
             backup.application !== CONFIG.appName ||
@@ -217,8 +208,30 @@ const AdventurePlanner = (() => {
         exportBackup,
         importBackup
     };
-
 })();
+
+
+/*
+ * Insert generated sections before the footer.
+ * This keeps the footer at the bottom of the page.
+ */
+
+function appendAppSection(section) {
+    const main = document.querySelector("main");
+
+    if (!main) {
+        console.error("The main page container could not be found.");
+        return;
+    }
+
+    const footer = main.querySelector("footer");
+
+    if (footer) {
+        main.insertBefore(section, footer);
+    } else {
+        main.appendChild(section);
+    }
+}
 
 
 /*
@@ -226,7 +239,6 @@ const AdventurePlanner = (() => {
  */
 
 function createAddActivityForm() {
-
     const section = document.createElement("section");
     section.className = "feature";
     section.id = "add-activity";
@@ -242,7 +254,6 @@ function createAddActivityForm() {
     form.className = "activity-form";
 
     function createInput(labelText, name, type = "text", required = true) {
-
         const wrapper = document.createElement("label");
         wrapper.className = "form-field";
 
@@ -263,7 +274,6 @@ function createAddActivityForm() {
     }
 
     function createSelect(labelText, name, options) {
-
         const wrapper = document.createElement("label");
         wrapper.className = "form-field";
 
@@ -344,7 +354,6 @@ function createAddActivityForm() {
     form.append(submit, message);
 
     form.addEventListener("submit", event => {
-
         event.preventDefault();
 
         const formData = new FormData(form);
@@ -396,7 +405,6 @@ function createAddActivityForm() {
                 `${added.name} has been added successfully.`;
 
             form.reset();
-
             renderActivityBrowser();
             renderMyActivities();
         } else {
@@ -406,7 +414,7 @@ function createAddActivityForm() {
     });
 
     section.append(heading, introduction, form);
-    document.querySelector("main").appendChild(section);
+    appendAppSection(section);
 }
 
 
@@ -415,7 +423,6 @@ function createAddActivityForm() {
  */
 
 function renderActivityBrowser() {
-
     const existing = document.getElementById("activity-browser");
     if (existing) existing.remove();
 
@@ -441,7 +448,6 @@ function renderActivityBrowser() {
     filters.className = "activity-filters";
 
     function createFilter(labelText, options, name) {
-
         const wrapper = document.createElement("label");
         wrapper.className = "filter-field";
 
@@ -460,7 +466,6 @@ function renderActivityBrowser() {
 
         wrapper.append(label, select);
         filters.appendChild(wrapper);
-
         select.addEventListener("change", renderActivities);
 
         return select;
@@ -544,6 +549,7 @@ function renderActivityBrowser() {
 
     const count = document.createElement("p");
     const progress = document.createElement("p");
+
     const results = document.createElement("div");
     results.id = "activity-results";
 
@@ -558,10 +564,9 @@ function renderActivityBrowser() {
         results
     );
 
-    document.querySelector("main").appendChild(section);
+    appendAppSection(section);
 
     function renderActivities() {
-
         results.replaceChildren();
 
         const term = search.value.trim().toLowerCase();
@@ -581,7 +586,6 @@ function renderActivityBrowser() {
             `Your progress: ${completedCount} of ${activities.length} experiences completed`;
 
         const filtered = activities.filter(activity => {
-
             const searchableText = [
                 activity.name,
                 activity.destination,
@@ -626,7 +630,6 @@ function renderActivityBrowser() {
         }
 
         filtered.forEach(activity => {
-
             const completed = AdventurePlanner.isCompleted(activity.id);
 
             const card = document.createElement("article");
@@ -717,7 +720,6 @@ function renderActivityBrowser() {
  */
 
 function renderMyActivities() {
-
     const existing = document.getElementById("my-activities");
     if (existing) existing.remove();
 
@@ -749,7 +751,6 @@ function renderMyActivities() {
     }
 
     customActivities.forEach(activity => {
-
         const card = document.createElement("article");
         card.className = "activity-card";
 
@@ -769,7 +770,6 @@ function renderMyActivities() {
         deleteButton.textContent = "Delete activity";
 
         deleteButton.addEventListener("click", () => {
-
             if (!window.confirm(`Delete "${activity.name}"?`)) return;
 
             if (AdventurePlanner.deleteActivity(activity.id)) {
@@ -785,7 +785,7 @@ function renderMyActivities() {
     });
 
     section.append(heading, introduction, count, list);
-    document.querySelector("main").appendChild(section);
+    appendAppSection(section);
 }
 
 
@@ -794,7 +794,6 @@ function renderMyActivities() {
  */
 
 function createBackupSection() {
-
     const section = document.createElement("section");
     section.className = "feature";
     section.id = "backup-section";
@@ -831,7 +830,6 @@ function createBackupSection() {
     message.id = "backup-message";
 
     fileInput.addEventListener("change", async () => {
-
         const file = fileInput.files[0];
         if (!file) return;
 
@@ -848,15 +846,12 @@ function createBackupSection() {
 
             AdventurePlanner.importBackup(backup);
 
-            message.textContent =
-                "Backup restored successfully.";
+            message.textContent = "Backup restored successfully.";
 
             renderActivityBrowser();
             renderMyActivities();
-
         } catch (error) {
-            message.textContent =
-                `Restore failed: ${error.message}`;
+            message.textContent = `Restore failed: ${error.message}`;
         }
 
         fileInput.value = "";
@@ -870,7 +865,7 @@ function createBackupSection() {
         message
     );
 
-    document.querySelector("main").appendChild(section);
+    appendAppSection(section);
 }
 
 
@@ -879,7 +874,6 @@ function createBackupSection() {
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-
     console.log(
         `${AdventurePlanner.config.appName} initialised successfully.`
     );
@@ -888,5 +882,4 @@ document.addEventListener("DOMContentLoaded", () => {
     createAddActivityForm();
     renderMyActivities();
     createBackupSection();
-
 });
