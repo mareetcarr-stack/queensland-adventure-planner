@@ -1,4 +1,215 @@
 
+:root {
+    --forest: #183b35;
+    --forest-light: #28564b;
+    --cream: #f4f5ef;
+    --white: #ffffff;
+    --text: #263b35;
+    --muted: #687871;
+    --accent: #d9a75b;
+    --border: #e5e9e2;
+    --surface: #edf1eb;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+}
+
+header {
+    background: linear-gradient(135deg, var(--forest), var(--forest-light));
+    color: white;
+    padding: 42px 24px 36px;
+}
+
+header h1 {
+    margin: 0 0 8px;
+    font-size: 30px;
+    letter-spacing: -0.5px;
+}
+
+header p {
+    margin: 0;
+    color: #d4e2d9;
+    font-size: 15px;
+}
+
+main {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 28px 18px 50px;
+}
+
+.welcome {
+    margin-bottom: 28px;
+}
+
+.welcome h2 {
+    font-size: 23px;
+    margin-bottom: 8px;
+}
+
+.welcome p {
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.feature {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    margin-bottom: 18px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.035);
+}
+
+.feature h2 {
+    font-size: 22px;
+    margin-top: 0;
+}
+
+.feature h3 {
+    margin: 0 0 8px;
+    font-size: 17px;
+}
+
+.feature p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.status {
+    display: inline-block;
+    background: #e4efe7;
+    color: #286044;
+    padding: 7px 11px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 12px;
+}
+
+#activity-search {
+    width: 100%;
+    padding: 14px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #fbfcfa;
+    font-size: 15px;
+    margin: 14px 0 18px;
+    outline: none;
+}
+
+#activity-search:focus {
+    border-color: var(--forest-light);
+}
+
+.activity-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.filter-field select {
+    width: 100%;
+    padding: 11px 9px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: #fbfcfa;
+    color: var(--text);
+    font-size: 13px;
+}
+
+.reset-filters {
+    border: none;
+    border-radius: 9px;
+    padding: 10px 15px;
+    background: var(--surface);
+    color: var(--forest);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#activity-count {
+    margin: 20px 0 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--forest-light);
+}
+
+.activity-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 17px;
+    margin-bottom: 12px;
+    background: #fbfcfa;
+}
+
+.activity-card h3 {
+    margin: 0 0 9px;
+    font-size: 17px;
+    color: var(--forest);
+}
+
+.activity-card p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.activity-card p:first-of-type {
+    font-weight: 600;
+    color: var(--forest-light);
+}
+
+footer {
+    text-align: center;
+    padding: 22px;
+    color: #89958f;
+    font-size: 12px;
+}
+
+@media (max-width: 480px) {
+    header {
+        padding: 32px 20px;
+    }
+
+    header h1 {
+        font-size: 26px;
+    }
+
+    main {
+        padding: 20px 13px 40px;
+    }
+
+    .feature {
+        padding: 17px;
+    }
+
+    .activity-filters {
+        grid-template-columns: 1fr;
+    }
+}
+
+
 /* Add an Adventure form */
 
 .activity-form {
