@@ -5,8 +5,8 @@
  * Adventure Planner
  * Activity database
  *
- * Each experience is stored separately.
- * A destination can contain multiple experiences.
+ * estimatedCost is an indicative per-person cost in AUD.
+ * null means the cost has not yet been established.
  */
 
 const ADVENTURE_ACTIVITIES = [
@@ -19,6 +19,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["gardens", "picnic", "nature"],
         description: "Explore the gardens and enjoy a relaxed picnic.",
         cost: "free",
+        estimatedCost: 0,
         durationHours: 2,
         dogPolicy: "verify",
         indoorOutdoor: "outdoor",
@@ -34,6 +35,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["waterfront", "scenic", "walking"],
         description: "Enjoy waterfront views and a relaxed walk.",
         cost: "free",
+        estimatedCost: 0,
         durationHours: 1,
         dogPolicy: "verify",
         indoorOutdoor: "outdoor",
@@ -49,6 +51,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["island", "beach", "nature", "scenic"],
         description: "Discover beaches, waterfront areas and island scenery.",
         cost: "free",
+        estimatedCost: 0,
         durationHours: 5,
         dogPolicy: "verify",
         indoorOutdoor: "outdoor",
@@ -64,6 +67,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["township", "shopping", "food", "scenic"],
         description: "Explore the hinterland township, shops and local food.",
         cost: "variable",
+        estimatedCost: null,
         durationHours: 3,
         dogPolicy: "verify",
         indoorOutdoor: "mixed",
@@ -79,6 +83,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["picnic", "waterfront", "relaxation"],
         description: "Enjoy a picnic beside the Noosa River.",
         cost: "free",
+        estimatedCost: 0,
         durationHours: 2,
         dogPolicy: "verify",
         indoorOutdoor: "outdoor",
@@ -94,6 +99,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["shopping", "food", "township"],
         description: "Browse boutiques, cafés and restaurants.",
         cost: "variable",
+        estimatedCost: null,
         durationHours: 2,
         dogPolicy: "verify",
         indoorOutdoor: "mixed",
@@ -109,6 +115,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["food", "farm", "local-produce"],
         description: "Discover local cheese and dairy products.",
         cost: "variable",
+        estimatedCost: null,
         durationHours: 2,
         dogPolicy: "verify",
         indoorOutdoor: "mixed",
@@ -124,6 +131,7 @@ const ADVENTURE_ACTIVITIES = [
         category: ["attraction", "photography", "food"],
         description: "Visit the iconic Big Pineapple site and explore its attractions.",
         cost: "variable",
+        estimatedCost: null,
         durationHours: 2,
         dogPolicy: "verify",
         indoorOutdoor: "mixed",
