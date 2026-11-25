@@ -85,11 +85,20 @@
     }
 
     function initialise() {
-        const planner = window.AdventurePlanner;
-
-        if (!planner || document.getElementById("adventure-map-section")) {
+        /*
+         * AdventurePlanner is declared as a top-level const in app.js.
+         * It is accessible here directly, but not through window.
+         */
+        if (typeof AdventurePlanner === "undefined") {
+            console.error(
+                "Adventure map could not initialise: AdventurePlanner is unavailable."
+            );
             return;
         }
+
+        const planner = AdventurePlanner;
+
+        if (document.getElementById("adventure-map-section")) return;
 
         const section = document.createElement("section");
         section.className = "feature";
@@ -150,17 +159,18 @@
         );
 
         const main = document.querySelector("main");
-        const footer = main?.querySelector("footer");
 
-        if (footer) {
-            main.insertBefore(section, footer);
+        if (main) {
+            main.appendChild(section);
         } else {
-            main?.appendChild(section);
+            document.body.appendChild(section);
         }
 
         const style = document.createElement("style");
         style.textContent = `
-            #adventure-map-section { margin-top: 24px; }
+            #adventure-map-section {
+                margin-top: 24px;
+            }
 
             .map-view-controls {
                 display: grid;
@@ -246,8 +256,13 @@
             }
 
             @media (max-width: 600px) {
-                .map-view-controls { grid-template-columns: 1fr; }
-                #adventure-map { height: 430px; }
+                .map-view-controls {
+                    grid-template-columns: 1fr;
+                }
+
+                #adventure-map {
+                    height: 430px;
+                }
             }
         `;
 
@@ -340,9 +355,7 @@
                     name.textContent = activity.name;
                     item.appendChild(name);
 
-                    const completed = planner.isCompleted(activity.id);
-
-                    if (completed) {
+                    if (planner.isCompleted(activity.id)) {
                         const status = document.createElement("span");
                         status.className = "completed-label";
                         status.textContent = "Completed";
@@ -412,7 +425,7 @@
                 console.log("Adventure map initialised.");
             })
             .catch(error => {
-                console.error(error);
+                console.error("Adventure map error:", error);
                 mapMessage.textContent =
                     "The map could not be loaded. Check your internet connection and reload the page.";
             });
