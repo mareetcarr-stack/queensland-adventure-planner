@@ -3,12 +3,11 @@
 
 /*
  * Holiday Planner
- * Creates and saves multi-day trips using the shared Adventure Planner
- * activity database and local browser storage.
+ * Multi-day trip planning, saved through the shared Adventure Planner
+ * data store so holiday plans are included in backup exports.
  */
 
 (() => {
-    const STORAGE_KEY = "adventurePlannerData";
     const root = document.getElementById("holiday-planner-root");
 
     if (!root) {
@@ -16,24 +15,27 @@
         return;
     }
 
-    function readStoredActivities() {
-        try {
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-            return Array.isArray(stored.activities) ? stored.activities : [];
-        } catch (error) {
-            console.error("Could not read personal activities:", error);
-            return [];
+    function getActivities() {
+        if (window.AdventurePlanner) {
+            return window.AdventurePlanner.getActivities();
         }
-    }
 
-    const activities = [
-        ...(window.ADVENTURE_ACTIVITIES || []),
-        ...readStoredActivities()
-    ];
+        return window.ADVENTURE_ACTIVITIES || [];
+    }
 
     function readHolidayPlans() {
         try {
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            if (
+                window.AdventurePlanner &&
+                Array.isArray(window.AdventurePlanner.data.savedHolidayPlans)
+            ) {
+                return window.AdventurePlanner.data.savedHolidayPlans;
+            }
+
+            const stored = JSON.parse(
+                localStorage.getItem("adventurePlannerData") || "{}"
+            );
+
             return Array.isArray(stored.savedHolidayPlans)
                 ? stored.savedHolidayPlans
                 : [];
@@ -45,9 +47,36 @@
 
     function saveHolidayPlans(plans) {
         try {
-            const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            if (window.AdventurePlanner) {
+                const previousPlans = Array.isArray(
+                    window.AdventurePlanner.data.savedHolidayPlans
+                )
+                    ? [...window.AdventurePlanner.data.savedHolidayPlans]
+                    : [];
+
+                window.AdventurePlanner.data.savedHolidayPlans = plans;
+
+                if (window.AdventurePlanner.saveData()) {
+                    return true;
+                }
+
+                window.AdventurePlanner.data.savedHolidayPlans =
+                    previousPlans;
+
+                return false;
+            }
+
+            const stored = JSON.parse(
+                localStorage.getItem("adventurePlannerData") || "{}"
+            );
+
             stored.savedHolidayPlans = plans;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+
+            localStorage.setItem(
+                "adventurePlannerData",
+                JSON.stringify(stored)
+            );
+
             return true;
         } catch (error) {
             console.error("Could not save holiday plans:", error);
@@ -103,12 +132,17 @@
     }
 
     const section = makeElement("section", "holiday-planner-section");
-    const heading = makeElement("h2", "", "Build a Holiday");
+
+    const heading = makeElement(
+        "h2",
+        "",
+        "Build a Holiday"
+    );
 
     const intro = makeElement(
         "p",
         "",
-        "Create a multi-day trip, then choose different experiences for each day. Your plans are saved in this browser."
+        "Create a multi-day trip, then choose different experiences for each day. Your plans are saved with your Adventure Planner data and included in backups."
     );
 
     const form = makeElement("form", "activity-form");
@@ -220,6 +254,10 @@
     let dayEditors = [];
 
     function getAllAssignedIds() {
+        if (!currentTrip) {
+            return new Set();
+        }
+
         return new Set(
             currentTrip.days.flatMap(day => day.activityIds)
         );
@@ -290,6 +328,7 @@
         function populateOptions() {
             const term = search.value.trim().toLowerCase();
             const assignedElsewhere = getAllAssignedIds();
+            const activities = getActivities();
 
             select.replaceChildren();
 
@@ -335,6 +374,8 @@
 
         function renderAssigned() {
             assignedList.replaceChildren();
+
+            const activities = getActivities();
 
             const assigned = dayPlan.activityIds
                 .map(id => activities.find(activity => activity.id === id))
@@ -516,10 +557,7 @@
             return;
         }
 
-        const dates = daysBetween(
-            startDate,
-            endDate
-        );
+        const dates = daysBetween(startDate, endDate);
 
         if (dates.length > 60) {
             message.textContent =
@@ -586,7 +624,7 @@
         }
 
         editorMessage.textContent =
-            "Holiday saved successfully.";
+            "Holiday saved successfully and included in your Adventure Planner data.";
 
         renderSavedHolidays();
     });
@@ -653,6 +691,7 @@
                 );
 
                 const list = document.createElement("ul");
+                const activities = getActivities();
 
                 (day.activityIds || []).forEach(id => {
                     const activity = activities.find(
