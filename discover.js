@@ -4,6 +4,7 @@
 /*
  * Adventure Planner — Discover
  * Keyword-led search with optional area, category and pet filters.
+ * Includes persistent Add to shortlist controls.
  */
 
 (() => {
@@ -101,8 +102,70 @@
         const count = document.createElement("p");
         count.className = "discover-count";
 
-        panel.append(search, controls, count, results);
+        const shortlistCount = document.createElement("p");
+        shortlistCount.id = "discover-shortlist-count";
+        shortlistCount.className = "discover-shortlist-count";
+        shortlistCount.setAttribute("aria-live", "polite");
+
+        panel.append(search, controls, shortlistCount, count, results);
         feature.appendChild(panel);
+
+        function getShortlist() {
+            if (!Array.isArray(planner.data.shortlistedActivities)) {
+                planner.data.shortlistedActivities = [];
+            }
+            return new Set(planner.data.shortlistedActivities);
+        }
+
+        function updateShortlistCount() {
+            const total = getShortlist().size;
+            shortlistCount.textContent = total
+                ? `${total} saved ${total === 1 ? "activity" : "activities"}`
+                : "Your shortlist is empty";
+        }
+
+        function updateShortlistButton(button, activityId) {
+            const saved = getShortlist().has(activityId);
+
+            button.textContent = saved
+                ? "✓ Added to shortlist"
+                : "＋ Add to shortlist";
+
+            button.classList.toggle("is-shortlisted", saved);
+            button.setAttribute("aria-pressed", String(saved));
+            button.setAttribute(
+                "aria-label",
+                saved
+                    ? "Remove this activity from your shortlist"
+                    : "Add this activity to your shortlist"
+            );
+        }
+
+        function toggleShortlist(activityId, button) {
+            const ids = getShortlist();
+
+            if (ids.has(activityId)) {
+                ids.delete(activityId);
+            } else {
+                ids.add(activityId);
+            }
+
+            planner.data.shortlistedActivities = [...ids];
+
+            if (!planner.saveData()) {
+                window.alert(
+                    "Your shortlist could not be saved. Please check your browser storage."
+                );
+                return;
+            }
+
+            updateShortlistButton(button, activityId);
+            updateShortlistCount();
+
+            document.dispatchEvent(
+                new CustomEvent("adventureplanner:datachanged")
+            );
+        }
 
         function getMatches() {
             const terms = search.value.trim().toLowerCase()
@@ -114,15 +177,20 @@
             return planner.getActivities().filter(activity => {
                 if (planner.isCompleted(activity.id)) return false;
 
-                if (region.value !== "all" &&
-                    activity.region !== region.value) return false;
+                if (
+                    region.value !== "all" &&
+                    activity.region !== region.value
+                ) return false;
 
-                if (category.value !== "all" &&
-                    !(activity.category || []).includes(category.value)) return false;
+                if (
+                    category.value !== "all" &&
+                    !(activity.category || []).includes(category.value)
+                ) return false;
 
-                if (petCheckbox.checked && activity.petFriendly !== true) {
-                    return false;
-                }
+                if (
+                    petCheckbox.checked &&
+                    activity.petFriendly !== true
+                ) return false;
 
                 const searchable = [
                     activity.name,
@@ -177,9 +245,21 @@
                 details.appendChild(item);
             });
 
+            const actions = document.createElement("div");
+            actions.className = "discover-card-actions";
+
+            const shortlist = document.createElement("button");
+            shortlist.type = "button";
+            shortlist.className = "discover-shortlist-button";
+            shortlist.addEventListener("click", () =>
+                toggleShortlist(activity.id, shortlist)
+            );
+
+            updateShortlistButton(shortlist, activity.id);
+
             const complete = document.createElement("button");
             complete.type = "button";
-            complete.className = "reset-filters";
+            complete.className = "discover-complete-button";
             complete.textContent = "Mark as completed";
 
             complete.addEventListener("click", () => {
@@ -187,7 +267,9 @@
                 render();
             });
 
-            card.append(heading, location, description, details, complete);
+            actions.append(shortlist, complete);
+            card.append(heading, location, description, details, actions);
+
             return card;
         }
 
@@ -198,36 +280,64 @@
 
             if (!term) {
                 count.textContent = "";
+
                 const prompt = document.createElement("p");
                 prompt.className = "discover-empty";
                 prompt.textContent =
                     "Enter a keyword above to explore matching experiences.";
+
                 results.appendChild(prompt);
+                updateShortlistCount();
                 return;
             }
 
             const matches = getMatches();
 
-            count.textContent = `${matches.length} matching experience${matches.length === 1 ? "" : "s"}`;
+            count.textContent =
+                `${matches.length} matching experience${matches.length === 1 ? "" : "s"}`;
 
             if (!matches.length) {
                 const empty = document.createElement("p");
                 empty.className = "discover-empty";
                 empty.textContent =
                     "No matching experiences. Try another keyword or change your filters.";
+
                 results.appendChild(empty);
+                updateShortlistCount();
                 return;
             }
 
             matches.forEach(activity => {
                 results.appendChild(createCard(activity));
             });
+
+            updateShortlistCount();
         }
 
         search.addEventListener("input", render);
+
         [region, category, petCheckbox].forEach(control =>
             control.addEventListener("change", render)
         );
+
+        document.addEventListener("adventureplanner:datachanged", () => {
+            results.querySelectorAll(".discover-card").forEach(card => {
+                const heading = card.querySelector("h4")?.textContent;
+                const location = card.querySelector(".discover-location")?.textContent || "";
+
+                const activity = planner.getActivities().find(item =>
+                    item.name === heading &&
+                    [item.destination, item.region].filter(Boolean).join(" · ") === location
+                );
+
+                if (activity) {
+                    const button = card.querySelector(".discover-shortlist-button");
+                    if (button) updateShortlistButton(button, activity.id);
+                }
+            });
+
+            updateShortlistCount();
+        });
 
         render();
     }
