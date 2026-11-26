@@ -375,7 +375,9 @@
                     }
                 ).addTo(map);
 
-                markerLayer = L.layerGroup().addTo(map);
+                // FeatureGroup supports getBounds(), unlike LayerGroup.
+                markerLayer = L.featureGroup().addTo(map);
+
                 renderMarkers();
 
                 setTimeout(() => map.invalidateSize(), 150);
