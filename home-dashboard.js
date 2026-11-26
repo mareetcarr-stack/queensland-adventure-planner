@@ -45,7 +45,7 @@ completedSection.className = "dashboard-completed-section";
 const itinerariesSection = document.createElement("div");
 itinerariesSection.className = "dashboard-itineraries-section";
 
-        section.append(heading, welcome, statistics, upcoming, shortcuts);
+        section.append(heading, welcome, statistics, upcoming, shortcuts, completedSection, itinerariesSection);
 
         const main = document.querySelector("main");
         const welcomeSection = main?.querySelector(".welcome");
