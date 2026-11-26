@@ -1,11 +1,12 @@
+
 /* Queensland Adventure Planner — unique saved itinerary names and Home tidy-up.
- * Load after app.js, home-dashboard.js and my-adventures.js.
- * Uses the existing AdventurePlanner data store; no saved records are discarded.
+ * Safe version: no MutationObserver loops.
  */
 "use strict";
 
 (() => {
     const planner = window.AdventurePlanner;
+
     if (!planner) {
         console.error("Adventure Planner is unavailable; itinerary naming was not initialised.");
         return;
@@ -17,11 +18,16 @@
             .map(id => allActivities.find(activity => activity.id === id))
             .filter(Boolean);
 
-        const destination = selected.map(activity => activity.destination || activity.region)
+        const destination = selected
+            .map(activity => activity.destination || activity.region)
             .find(Boolean) || "Queensland";
 
-        const activityNames = selected.map(activity => activity.name);
-        const highlights = activityNames.slice(0, 2).join(" & ");
+        const highlights = selected
+            .map(activity => activity.name)
+            .filter(Boolean)
+            .slice(0, 2)
+            .join(" & ");
+
         const date = itinerary.date
             ? new Date(`${itinerary.date}T12:00:00`).toLocaleDateString("en-AU", {
                 day: "numeric",
@@ -35,6 +41,7 @@
 
         const existing = new Set(
             (planner.data.savedItineraries || [])
+                .filter(item => item.id !== itinerary.id)
                 .map(item => item.name)
                 .filter(Boolean)
         );
@@ -45,29 +52,28 @@
         if (!existing.has(dated)) return dated;
 
         let suffix = 2;
-        while (existing.has(`${dated} · ${suffix}`)) suffix += 1;
+        while (existing.has(`${dated} · ${suffix}`)) suffix++;
+
         return `${dated} · ${suffix}`;
     }
 
-    // app.js currently stores date and activity IDs only. Wrap its existing method
-    // so all new saved plans also receive a stable, human-readable unique name.
+    // Give newly saved itineraries a unique name.
     if (!planner.saveItinerary.__uniqueNamesApplied) {
         const originalSaveItinerary = planner.saveItinerary.bind(planner);
 
         const saveWithName = itinerary => {
             const name = makeUniqueName(itinerary);
-            const saved = originalSaveItinerary({
-                ...itinerary,
-                name
-            });
+            const saved = originalSaveItinerary(itinerary);
 
             if (!saved) return null;
 
             saved.name = name;
+
             if (!planner.saveData()) {
                 planner.deleteItinerary(saved.id);
                 return null;
             }
+
             return saved;
         };
 
@@ -77,8 +83,10 @@
 
     function formatDate(value) {
         if (!value) return "Date not recorded";
+
         const date = new Date(`${value}T12:00:00`);
         if (Number.isNaN(date.getTime())) return "Date not recorded";
+
         return date.toLocaleDateString("en-AU", {
             weekday: "long",
             day: "numeric",
@@ -90,41 +98,59 @@
     function updateSavedItineraryCards() {
         (planner.data.savedItineraries || []).forEach(itinerary => {
             if (!itinerary.id) return;
-            const card = document.getElementById(`saved-itinerary-${itinerary.id}`);
+
+            const card = document.getElementById(
+                `saved-itinerary-${itinerary.id}`
+            );
+
             if (!card) return;
 
             const heading = card.querySelector("h4");
             if (!heading) return;
 
             const name = itinerary.name || makeUniqueName(itinerary);
+
             if (!itinerary.name) {
                 itinerary.name = name;
                 planner.saveData();
             }
 
-            if (heading.textContent !== name) heading.textContent = name;
+            if (heading.textContent !== name) {
+                heading.textContent = name;
+            }
 
             let dateLine = card.querySelector(".saved-itinerary-date");
+
             if (!dateLine) {
                 dateLine = document.createElement("p");
                 dateLine.className = "saved-itinerary-date";
                 heading.insertAdjacentElement("afterend", dateLine);
             }
-            dateLine.textContent = formatDate(itinerary.date);
+
+            const formattedDate = formatDate(itinerary.date);
+
+            if (dateLine.textContent !== formattedDate) {
+                dateLine.textContent = formattedDate;
+            }
         });
     }
 
     function updateComingUpCards() {
         const plansById = new Map(
-            (planner.data.savedItineraries || []).map(item => [item.id, item])
+            (planner.data.savedItineraries || [])
+                .map(item => [item.id, item])
         );
 
-        document.querySelectorAll(".dashboard-plan-card[href*='saved-itinerary-']").forEach(card => {
+        document.querySelectorAll(
+            ".dashboard-plan-card[href*='saved-itinerary-']"
+        ).forEach(card => {
             const href = card.getAttribute("href") || "";
             const match = href.match(/saved-itinerary-([^&#]+)/);
+
             if (!match) return;
 
             let id;
+
             try {
                 id = decodeURIComponent(match[1]);
             } catch {
@@ -135,7 +161,11 @@
             if (!itinerary) return;
 
             const title = card.querySelector("strong");
-            if (title) title.textContent = itinerary.name || "Saved day itinerary";
+            const name = itinerary.name || "Saved day itinerary";
+
+            if (title && title.textContent !== name) {
+                title.textContent = name;
+            }
         });
     }
 
@@ -143,6 +173,7 @@
         const shortcuts = document.querySelector(
             "#home-dashboard .dashboard-shortcuts"
         );
+
         if (shortcuts) shortcuts.remove();
     }
 
@@ -155,19 +186,21 @@
     function initialise() {
         refresh();
 
-        document.addEventListener("adventureplanner:datachanged", refresh);
+        document.addEventListener(
+            "adventureplanner:datachanged",
+            refresh
+        );
+
         window.addEventListener("focus", refresh);
         window.addEventListener("pageshow", refresh);
-
-        const main = document.querySelector("main");
-        if (main) {
-            const observer = new MutationObserver(refresh);
-            observer.observe(main, { childList: true, subtree: true });
-        }
     }
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initialise, { once: true });
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialise,
+            { once: true }
+        );
     } else {
         initialise();
     }
