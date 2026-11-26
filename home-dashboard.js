@@ -214,12 +214,7 @@
             shortcuts.appendChild(container);
         }
 
-        function renderRecent() {
-            recent.replaceChildren();
-
-            recent.appendChild(
-                makeElement("h3", "", "Recently Completed")
-            );
+        
 
             const completedIds = planner.data.completedActivities || [];
             const allActivities = planner.getActivities();
@@ -297,7 +292,7 @@
 
             renderUpcoming();
             renderShortcuts();
-            renderRecent();
+            
         }
 
         window.addEventListener("adventureplanner:datachanged", render);
