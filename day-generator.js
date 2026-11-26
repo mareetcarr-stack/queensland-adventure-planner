@@ -3,9 +3,7 @@
 
 /*
  * Adventure Planner — Day Generator
- * Supports user-entered starting locations and distance-based suggestions.
- * When a distance limit is selected, shorter local outings remain eligible
- * rather than being discarded for not meeting the usual duration target.
+ * Reliable starting-location resolution and distance filtering.
  */
 
 (() => {
@@ -30,6 +28,7 @@
 
         const DEFAULT_LOCATION = "Clontarf, Queensland, Australia";
 
+        // Coordinates are stored as [latitude, longitude].
         const LOCATIONS = {
             "Redcliffe": [-27.230, 153.113],
             "Woody Point": [-27.256, 153.104],
@@ -86,7 +85,8 @@
 
         const normalise = value =>
             String(value || "")
-                .trim()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
                 .toLowerCase()
                 .replace(/[^a-z0-9]/g, "");
 
@@ -103,7 +103,7 @@
                 .toISOString().slice(0, 10);
         };
 
-        const distanceBetween = (a, b) => {
+        function distanceBetween(a, b) {
             const radians = value => value * Math.PI / 180;
             const radius = 6371;
 
@@ -117,13 +117,13 @@
                 Math.cos(lat1) * Math.cos(lat2) *
                 Math.sin(dLon / 2) ** 2;
 
-            const safeValue = Math.min(1, Math.max(0, value));
+            const safeValue = Math.max(0, Math.min(1, value));
 
             return radius * 2 * Math.atan2(
                 Math.sqrt(safeValue),
                 Math.sqrt(1 - safeValue)
             );
-        };
+        }
 
         const panel = document.createElement("div");
         panel.className = "day-generator";
@@ -255,10 +255,17 @@
                 font-weight:650;
                 text-decoration:none;
             }
+            .distance-diagnostic {
+                margin-top:12px;
+                padding:12px 14px;
+                border-radius:9px;
+                background:#F2EBDD;
+                color:var(--ink);
+                font-size:.88rem;
+                line-height:1.5;
+            }
             @media(max-width:600px) {
-                .day-generator-controls {
-                    grid-template-columns:1fr;
-                }
+                .day-generator-controls { grid-template-columns:1fr; }
                 .generated-day { padding:16px; }
                 .day-generator-actions button { width:100%; }
             }
@@ -403,6 +410,60 @@
         let startingCoordinates = null;
         let resolvedLocationText = "";
 
+        /*
+         * Resolve known common starting points directly.
+         * This avoids ambiguous geocoder matches for suburbs with duplicate
+         * names, including Clontarf.
+         */
+        const KNOWN_STARTING_LOCATIONS = new Map([
+            [
+                "clontarf",
+                { lat: -27.253, lon: 153.083, label: "Clontarf, Queensland" }
+            ],
+            [
+                "redcliffe",
+                { lat: -27.230, lon: 153.113, label: "Redcliffe, Queensland" }
+            ],
+            [
+                "brisbanecity",
+                { lat: -27.469, lon: 153.025, label: "Brisbane City, Queensland" }
+            ],
+            [
+                "noosa",
+                { lat: -26.395, lon: 153.091, label: "Noosa, Queensland" }
+            ],
+            [
+                "goldcoast",
+                { lat: -28.016, lon: 153.400, label: "Gold Coast, Queensland" }
+            ],
+            [
+                "mooloolaba",
+                { lat: -26.681, lon: 153.119, label: "Mooloolaba, Queensland" }
+            ]
+        ]);
+
+        function requestedStateFrom(query) {
+            const match = query.match(
+                /\b(Queensland|New South Wales|Victoria|Tasmania|Western Australia|South Australia|Northern Territory|Australian Capital Territory|Qld|NSW|Vic|Tas|WA|SA|NT|ACT)\b/i
+            );
+
+            if (!match) return "";
+
+            const aliases = {
+                qld: "queensland",
+                nsw: "new south wales",
+                vic: "victoria",
+                tas: "tasmania",
+                wa: "western australia",
+                sa: "south australia",
+                nt: "northern territory",
+                act: "australian capital territory"
+            };
+
+            const value = match[0].toLowerCase();
+            return aliases[value] || value;
+        }
+
         async function resolveStartingLocation() {
             const query = locationInput.value.trim();
 
@@ -414,6 +475,23 @@
                 return startingCoordinates;
             }
 
+            const simpleName = normalise(query.split(",")[0]);
+            const known = KNOWN_STARTING_LOCATIONS.get(simpleName);
+            const requestedState = requestedStateFrom(query);
+
+            if (
+                known &&
+                (!requestedState || requestedState === "queensland")
+            ) {
+                startingCoordinates = {
+                    lat: known.lat,
+                    lon: known.lon
+                };
+                resolvedLocationText = query;
+                locationHelp.textContent = `Starting point found: ${known.label}`;
+                return startingCoordinates;
+            }
+
             locationHelp.textContent = "Finding your starting location…";
 
             const searchQuery =
@@ -422,7 +500,7 @@
                     : `${query}, Australia`;
 
             const url =
-                "https://photon.komoot.io/api/?limit=10&q=" +
+                "https://photon.komoot.io/api/?limit=20&q=" +
                 encodeURIComponent(searchQuery);
 
             let response;
@@ -448,63 +526,82 @@
                 ? data.features
                 : [];
 
-            const australianFeatures = features.filter(feature =>
-                String(feature.properties?.country || "").toLowerCase() ===
-                "australia"
-            );
+            const candidates = features.filter(item => {
+                const props = item.properties || {};
+                const coords = item.geometry?.coordinates || [];
+                const lon = Number(coords[0]);
+                const lat = Number(coords[1]);
 
-            const requestedState = searchQuery.match(
-                /\b(Queensland|New South Wales|Victoria|Tasmania|Western Australia|South Australia|Northern Territory|Australian Capital Territory|Qld|NSW|Vic|Tas|WA|SA|NT|ACT)\b/i
-            )?.[0];
+                return (
+                    String(props.country || "").toLowerCase() === "australia" &&
+                    Number.isFinite(lon) &&
+                    Number.isFinite(lat) &&
+                    lon >= 110 && lon <= 155 &&
+                    lat >= -45 && lat <= -8
+                );
+            });
 
-            const stateAliases = {
-                qld: "Queensland",
-                nsw: "New South Wales",
-                vic: "Victoria",
-                tas: "Tasmania",
-                wa: "Western Australia",
-                sa: "South Australia",
-                nt: "Northern Territory",
-                act: "Australian Capital Territory"
-            };
-
-            const normaliseState = value => {
-                const state = String(value || "").trim();
-                return stateAliases[state.toLowerCase()] || state;
-            };
-
-            const matchingState = requestedState
-                ? australianFeatures.filter(feature =>
-                    normaliseState(feature.properties?.state).toLowerCase() ===
-                    normaliseState(requestedState).toLowerCase()
-                )
-                : [];
-
-            const match = matchingState[0] || australianFeatures[0];
-            const coordinates = match?.geometry?.coordinates;
-            const longitude = Number(coordinates?.[0]);
-            const latitude = Number(coordinates?.[1]);
-
-            if (
-                !match ||
-                !Number.isFinite(longitude) ||
-                !Number.isFinite(latitude) ||
-                longitude < 110 || longitude > 155 ||
-                latitude < -45 || latitude > -8
-            ) {
+            if (!candidates.length) {
                 throw new Error(
-                    "We couldn't find a matching Australian location. Try adding the state, for example “Clontarf, Queensland”."
+                    "We couldn't find that Australian location. Try adding its state or postcode."
                 );
             }
 
+            const requestedName = normalise(query.split(",")[0]);
+
+            function scoreCandidate(item) {
+                const props = item.properties || {};
+                const name = normalise(props.name);
+                const city = normalise(props.city);
+                const district = normalise(props.district);
+                const state = String(props.state || "").toLowerCase();
+
+                let score = 0;
+
+                if (name === requestedName) score += 100;
+                if (city === requestedName) score += 80;
+                if (district === requestedName) score += 80;
+
+                if (
+                    requestedState &&
+                    state === requestedState
+                ) {
+                    score += 60;
+                }
+
+                if (
+                    requestedState &&
+                    state !== requestedState
+                ) {
+                    score -= 100;
+                }
+
+                return score;
+            }
+
+            candidates.sort(
+                (a, b) => scoreCandidate(b) - scoreCandidate(a)
+            );
+
+            const match = candidates[0];
+            const coordinates = match.geometry.coordinates;
+
             startingCoordinates = {
-                lon: longitude,
-                lat: latitude
+                lon: Number(coordinates[0]),
+                lat: Number(coordinates[1])
             };
 
             resolvedLocationText = query;
+
+            const props = match.properties || {};
+            const resolvedName = [
+                props.name,
+                props.city,
+                props.state
+            ].filter(Boolean).join(", ");
+
             locationHelp.textContent =
-                `Starting point found: ${match.properties?.name || query}`;
+                `Starting point found: ${resolvedName || query}`;
 
             return startingCoordinates;
         }
@@ -519,22 +616,21 @@
         function estimatedDistance(destination) {
             if (!startingCoordinates) return null;
 
-            const coordinates =
-                LOCATION_LOOKUP.get(normalise(destination));
+            const coordinates = LOCATION_LOOKUP.get(normalise(destination));
 
             if (!coordinates) return null;
 
             const straightLineDistance = distanceBetween(
                 startingCoordinates,
                 {
-                    lat: coordinates[0],
-                    lon: coordinates[1]
+                    lat: Number(coordinates[0]),
+                    lon: Number(coordinates[1])
                 }
             );
 
             if (!Number.isFinite(straightLineDistance)) return null;
 
-            // Straight-line distance is multiplied to approximate road distance.
+            // Approximate road distance, not live route distance.
             return Math.round(straightLineDistance * 1.3);
         }
 
@@ -583,25 +679,39 @@
             });
         }
 
-        function getDistanceEligibleActivities(activities) {
+        function getDistanceResults(activities) {
+            const distances = activities.map(activity => ({
+                activity,
+                distance: estimatedDistance(activity.destination)
+            }));
+
+            const matched = distances.filter(item =>
+                item.distance !== null
+            );
+
             if (distance.select.value === "any") {
-                return activities.map(activity => ({
-                    activity,
-                    distance: null
-                }));
+                return {
+                    eligible: distances,
+                    matchedCount: matched.length,
+                    unmatchedCount: distances.length - matched.length,
+                    nearest: matched.length
+                        ? Math.min(...matched.map(item => item.distance))
+                        : null
+                };
             }
 
             const maximumDistance = Number(distance.select.value);
 
-            return activities
-                .map(activity => ({
-                    activity,
-                    distance: estimatedDistance(activity.destination)
-                }))
-                .filter(item =>
-                    item.distance !== null &&
+            return {
+                eligible: matched.filter(item =>
                     item.distance <= maximumDistance
-                );
+                ),
+                matchedCount: matched.length,
+                unmatchedCount: distances.length - matched.length,
+                nearest: matched.length
+                    ? Math.min(...matched.map(item => item.distance))
+                    : null
+            };
         }
 
         function buildSuggestions() {
@@ -612,13 +722,14 @@
                 maximumHours >= 4 ? 2.5 : 1;
 
             const baseActivities = getBaseEligibleActivities();
-            const distanceEligible = getDistanceEligibleActivities(baseActivities);
+            const distanceResults = getDistanceResults(baseActivities);
+            const distanceEligible = distanceResults.eligible;
 
             const groups = new Map();
 
             distanceEligible.forEach(item => {
-                const activity = item.activity;
-                const destination = String(activity.destination || "").trim();
+                const destination =
+                    String(item.activity.destination || "").trim();
 
                 if (!destination) return;
 
@@ -670,24 +781,7 @@
                 });
             });
 
-            if (suggestions.length) {
-                return {
-                    suggestions: shuffle(suggestions),
-                    eligibleCount: distanceEligible.length,
-                    baseCount: baseActivities.length,
-                    relaxed: false
-                };
-            }
-
-            /*
-             * Distance-filter fallback:
-             * If there are nearby activities but not enough to meet the normal
-             * minimum-duration target, offer the best available local outing.
-             * The selected distance limit is still strictly respected.
-             */
-            if (distance.select.value !== "any" && distanceEligible.length) {
-                const relaxedSuggestions = [];
-
+            if (!suggestions.length && distance.select.value !== "any") {
                 groups.forEach((items, destination) => {
                     const candidates = shuffle(items).sort(
                         (a, b) =>
@@ -709,7 +803,7 @@
 
                     if (!selected.length) return;
 
-                    relaxedSuggestions.push({
+                    suggestions.push({
                         destination,
                         region: selected[0].activity.region || "",
                         activities: selected.map(item => item.activity),
@@ -718,28 +812,25 @@
                         relaxed: true
                     });
                 });
-
-                relaxedSuggestions.sort((a, b) => {
-                    if (a.distance !== b.distance) {
-                        return a.distance - b.distance;
-                    }
-
-                    return b.totalHours - a.totalHours;
-                });
-
-                return {
-                    suggestions: relaxedSuggestions,
-                    eligibleCount: distanceEligible.length,
-                    baseCount: baseActivities.length,
-                    relaxed: true
-                };
             }
 
+            suggestions.sort((a, b) => {
+                if (a.distance !== b.distance) {
+                    return a.distance - b.distance;
+                }
+                return b.totalHours - a.totalHours;
+            });
+
             return {
-                suggestions: [],
-                eligibleCount: distanceEligible.length,
+                suggestions:
+                    suggestions.length && suggestions[0].relaxed
+                        ? suggestions
+                        : shuffle(suggestions),
                 baseCount: baseActivities.length,
-                relaxed: false
+                matchedCount: distanceResults.matchedCount,
+                unmatchedCount: distanceResults.unmatchedCount,
+                eligibleCount: distanceEligible.length,
+                nearest: distanceResults.nearest
             };
         }
 
@@ -775,7 +866,8 @@
             const overview = document.createElement("p");
             overview.className = "generated-day-overview";
 
-            const activityNames = suggestion.activities.map(item => item.name);
+            const activityNames =
+                suggestion.activities.map(item => item.name);
 
             overview.textContent =
                 `A lovely outing in ${suggestion.destination}, bringing together ` +
@@ -783,14 +875,14 @@
                 `${suggestion.totalHours.toFixed(1)} hours for these experiences, ` +
                 `with additional time for travelling, refreshments and breaks.`;
 
+            card.append(heading, intro, overview);
+
             if (suggestion.relaxed) {
                 const relaxedNote = document.createElement("p");
                 relaxedNote.className = "generated-day-meta";
                 relaxedNote.textContent =
                     "This is a shorter local option selected because it fits your distance limit. You can add more activities from Discover if you'd like to extend the day.";
-                card.append(heading, intro, overview, relaxedNote);
-            } else {
-                card.append(heading, intro, overview);
+                card.appendChild(relaxedNote);
             }
 
             const activityContainer = document.createElement("div");
@@ -812,8 +904,7 @@
                 );
 
                 summary.textContent =
-                    `${selected.length} experiences · ` +
-                    `${hours.toFixed(1)} hours of activity`;
+                    `${selected.length} experiences · ${hours.toFixed(1)} hours of activity`;
             }
 
             suggestion.activities.forEach((activity, index) => {
@@ -830,7 +921,6 @@
                     } else {
                         selectedIds.delete(activity.id);
                     }
-
                     updateSummary();
                 });
 
@@ -903,7 +993,6 @@
 
                 message.textContent =
                     "Your itinerary has been saved in My Adventures. ";
-
                 message.appendChild(link);
 
                 saveButton.disabled = true;
@@ -950,13 +1039,32 @@
 
                     if (distance.select.value !== "any") {
                         empty.textContent =
-                            `There are no eligible activities within ${distance.select.value} km of ${locationInput.value.trim()} with your current preferences. Try a larger distance, change your budget or time available, or untick Pet-friendly options.`;
+                            `No itinerary could be generated within ${distance.select.value} km.`;
                     } else {
                         empty.textContent =
                             "No suitable itineraries match these preferences. Try increasing your available time or budget, or untick Pet-friendly options.";
                     }
 
                     results.appendChild(empty);
+
+                    if (distance.select.value !== "any") {
+                        const diagnostic = document.createElement("div");
+                        diagnostic.className = "distance-diagnostic";
+
+                        const nearestText = result.nearest === null
+                            ? "No destination coordinates could be matched."
+                            : `The nearest recognised destination is approximately ${result.nearest} km away.`;
+
+                        diagnostic.textContent =
+                            `Location: ${locationHelp.textContent.replace("Starting point found: ", "")}. ` +
+                            `${result.baseCount} activities passed your other preferences. ` +
+                            `${result.matchedCount} had recognised destination coordinates; ` +
+                            `${result.unmatchedCount} did not. ` +
+                            `${nearestText}`;
+
+                        results.appendChild(diagnostic);
+                    }
+
                     return;
                 }
 
