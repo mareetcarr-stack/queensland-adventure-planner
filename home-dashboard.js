@@ -39,6 +39,12 @@
         const shortcuts = document.createElement("div");
         shortcuts.className = "dashboard-shortcuts";
 
+        const completedSection = document.createElement("div");
+completedSection.className = "dashboard-completed-section";
+
+const itinerariesSection = document.createElement("div");
+itinerariesSection.className = "dashboard-itineraries-section";
+
         section.append(heading, welcome, statistics, upcoming, shortcuts);
 
         const main = document.querySelector("main");
