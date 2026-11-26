@@ -3,8 +3,8 @@
 
 /*
  * Adventure Planner — Discover
- * Keyword-led search with optional area, category and pet filters.
- * Includes persistent Add to shortlist controls.
+ * Consolidated search with all original activity filters,
+ * plus area, experience type, pet-friendly toggle and shortlist.
  */
 
 (() => {
@@ -29,8 +29,8 @@
         search.type = "search";
         search.id = "discover-search";
         search.className = "search-input";
-        search.placeholder = 'Filter by keywords, e.g. "beach", "park" or "waterfall"';
-        search.setAttribute("aria-label", "Filter experiences by keyword");
+        search.placeholder = 'Search by keyword, e.g. "beach", "park" or "waterfall"';
+        search.setAttribute("aria-label", "Search experiences by keyword");
 
         const controls = document.createElement("div");
         controls.className = "discover-controls";
@@ -67,7 +67,7 @@
             activities.flatMap(item => item.category || [])
         )].sort();
 
-        const region = makeSelect("Area", "discover-region", [
+        const region = makeSelect("Area / Region", "discover-region", [
             { value: "all", label: "Anywhere" },
             ...regions.map(value => ({ value, label: value }))
         ]);
@@ -80,6 +80,38 @@
                     .replace(/\b\w/g, char => char.toUpperCase())
             }))
         ]);
+
+        const budget = makeSelect("Budget per person", "discover-budget", [
+            { value: "any", label: "Any budget" },
+            { value: "0", label: "Free" },
+            { value: "25", label: "Under $25" },
+            { value: "50", label: "Under $50" },
+            { value: "100", label: "Under $100" }
+        ]);
+
+        const duration = makeSelect("Duration", "discover-duration", [
+            { value: "any", label: "Any duration" },
+            { value: "2", label: "Up to 2 hours" },
+            { value: "4", label: "Up to 4 hours" },
+            { value: "8", label: "Up to 8 hours" }
+        ]);
+
+        const dog = makeSelect("Dog preference", "discover-dog", [
+            { value: "any", label: "No preference" },
+            { value: "friendly", label: "Dog-friendly only" },
+            { value: "verify", label: "Needs verification" },
+            { value: "restricted", label: "Dogs not permitted" }
+        ]);
+
+        const completion = makeSelect(
+            "Completion status",
+            "discover-completion",
+            [
+                { value: "incomplete", label: "Not yet completed" },
+                { value: "all", label: "All experiences" },
+                { value: "complete", label: "Completed" }
+            ]
+        );
 
         const petLabel = document.createElement("label");
         petLabel.className = "pet-friendly-toggle";
@@ -94,33 +126,50 @@
         petLabel.append(petCheckbox, petText);
         controls.appendChild(petLabel);
 
-        const results = document.createElement("div");
-        results.id = "discover-results";
-        results.className = "discover-results";
-        results.setAttribute("aria-live", "polite");
-
-        const count = document.createElement("p");
-        count.className = "discover-count";
+        const resetButton = document.createElement("button");
+        resetButton.type = "button";
+        resetButton.id = "discover-clear-filters";
+        resetButton.className = "reset-filters";
+        resetButton.textContent = "Clear filters";
 
         const shortlistCount = document.createElement("p");
         shortlistCount.id = "discover-shortlist-count";
         shortlistCount.className = "discover-shortlist-count";
         shortlistCount.setAttribute("aria-live", "polite");
 
-        panel.append(search, controls, shortlistCount, count, results);
+        const count = document.createElement("p");
+        count.className = "discover-count";
+        count.setAttribute("aria-live", "polite");
+
+        const results = document.createElement("div");
+        results.id = "discover-results";
+        results.className = "discover-results";
+        results.setAttribute("aria-live", "polite");
+
+        panel.append(
+            search,
+            controls,
+            resetButton,
+            shortlistCount,
+            count,
+            results
+        );
+
         feature.appendChild(panel);
 
         function getShortlist() {
             if (!Array.isArray(planner.data.shortlistedActivities)) {
                 planner.data.shortlistedActivities = [];
             }
+
             return new Set(planner.data.shortlistedActivities);
         }
 
         function updateShortlistCount() {
             const total = getShortlist().size;
+
             shortlistCount.textContent = total
-                ? `${total} saved ${total === 1 ? "activity" : "activities"}`
+                ? `${total} saved ${total === 1 ? "activity" : "activities"} in My Shortlist`
                 : "Your shortlist is empty";
         }
 
@@ -133,6 +182,7 @@
 
             button.classList.toggle("is-shortlisted", saved);
             button.setAttribute("aria-pressed", String(saved));
+
             button.setAttribute(
                 "aria-label",
                 saved
@@ -167,6 +217,16 @@
             );
         }
 
+        function getDogPolicy(activity) {
+            if (activity.dogPolicy) return activity.dogPolicy;
+
+            if (activity.petFriendly === true) return "friendly";
+
+            if (activity.petFriendly === false) return "restricted";
+
+            return "verify";
+        }
+
         function getMatches() {
             const terms = search.value.trim().toLowerCase()
                 .split(/\s+/)
@@ -175,8 +235,6 @@
             if (!terms.length) return [];
 
             return planner.getActivities().filter(activity => {
-                if (planner.isCompleted(activity.id)) return false;
-
                 if (
                     region.value !== "all" &&
                     activity.region !== region.value
@@ -187,10 +245,54 @@
                     !(activity.category || []).includes(category.value)
                 ) return false;
 
+                const cost = activity.estimatedCost;
+                const costLimit = budget.value;
+
+                if (costLimit !== "any") {
+                    if (cost === null || cost === undefined || cost === "") {
+                        return false;
+                    }
+
+                    const numericCost = Number(cost);
+
+                    if (!Number.isFinite(numericCost)) return false;
+
+                    if (costLimit === "0" && numericCost !== 0) return false;
+
+                    if (
+                        costLimit !== "0" &&
+                        numericCost >= Number(costLimit)
+                    ) return false;
+                }
+
+                if (duration.value !== "any") {
+                    const hours = Number(activity.durationHours);
+
+                    if (
+                        !Number.isFinite(hours) ||
+                        hours > Number(duration.value)
+                    ) return false;
+                }
+
+                if (
+                    dog.value !== "any" &&
+                    getDogPolicy(activity) !== dog.value
+                ) return false;
+
                 if (
                     petCheckbox.checked &&
-                    activity.petFriendly !== true
+                    getDogPolicy(activity) !== "friendly"
                 ) return false;
+
+                const completed = planner.isCompleted(activity.id);
+
+                if (completion.value === "complete" && !completed) {
+                    return false;
+                }
+
+                if (completion.value === "incomplete" && completed) {
+                    return false;
+                }
 
                 const searchable = [
                     activity.name,
@@ -234,9 +336,14 @@
                     : activity.estimatedCost != null
                         ? `Approx. $${activity.estimatedCost} per person`
                         : "Cost to check",
-                activity.petFriendly
-                    ? "Pet-friendly"
-                    : "Not pet-friendly"
+                getDogPolicy(activity) === "friendly"
+                    ? "Dog-friendly"
+                    : getDogPolicy(activity) === "restricted"
+                        ? "Dogs not permitted"
+                        : "Dog access to verify",
+                planner.isCompleted(activity.id)
+                    ? "Completed"
+                    : "Not yet completed"
             ];
 
             values.forEach(value => {
@@ -251,6 +358,7 @@
             const shortlist = document.createElement("button");
             shortlist.type = "button";
             shortlist.className = "discover-shortlist-button";
+
             shortlist.addEventListener("click", () =>
                 toggleShortlist(activity.id, shortlist)
             );
@@ -260,7 +368,10 @@
             const complete = document.createElement("button");
             complete.type = "button";
             complete.className = "discover-complete-button";
-            complete.textContent = "Mark as completed";
+
+            complete.textContent = planner.isCompleted(activity.id)
+                ? "Mark as not completed"
+                : "Mark as completed";
 
             complete.addEventListener("click", () => {
                 planner.toggleCompleted(activity.id);
@@ -284,7 +395,7 @@
                 const prompt = document.createElement("p");
                 prompt.className = "discover-empty";
                 prompt.textContent =
-                    "Enter a keyword above to explore matching experiences.";
+                    "Enter a keyword above to explore matching experiences. You can then narrow the results using the filters.";
 
                 results.appendChild(prompt);
                 updateShortlistCount();
@@ -314,29 +425,37 @@
             updateShortlistCount();
         }
 
+        function clearFilters() {
+            search.value = "";
+            region.value = "all";
+            category.value = "all";
+            budget.value = "any";
+            duration.value = "any";
+            dog.value = "any";
+            completion.value = "incomplete";
+            petCheckbox.checked = false;
+
+            render();
+        }
+
         search.addEventListener("input", render);
 
-        [region, category, petCheckbox].forEach(control =>
+        [
+            region,
+            category,
+            budget,
+            duration,
+            dog,
+            completion,
+            petCheckbox
+        ].forEach(control =>
             control.addEventListener("change", render)
         );
 
+        resetButton.addEventListener("click", clearFilters);
+
         document.addEventListener("adventureplanner:datachanged", () => {
-            results.querySelectorAll(".discover-card").forEach(card => {
-                const heading = card.querySelector("h4")?.textContent;
-                const location = card.querySelector(".discover-location")?.textContent || "";
-
-                const activity = planner.getActivities().find(item =>
-                    item.name === heading &&
-                    [item.destination, item.region].filter(Boolean).join(" · ") === location
-                );
-
-                if (activity) {
-                    const button = card.querySelector(".discover-shortlist-button");
-                    if (button) updateShortlistButton(button, activity.id);
-                }
-            });
-
-            updateShortlistCount();
+            render();
         });
 
         render();
