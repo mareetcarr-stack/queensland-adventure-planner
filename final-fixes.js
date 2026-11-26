@@ -3,12 +3,14 @@
 
 /*
  * Queensland Adventure Planner — final interface fixes
- * Discover shortlist controls are handled by discover.js.
  *
- * Important:
- * No MutationObserver is used here. The previous observer watched
- * the entire main section while also modifying that same section,
- * causing repeated execution and browser script timeouts.
+ * My Adventures page order:
+ * 1. Welcome section
+ * 2. Adventure Dashboard
+ * 3. Personal adventure history
+ *
+ * No MutationObserver is used.
+ * Existing saved data and dashboard content are preserved.
  */
 
 (() => {
@@ -22,20 +24,6 @@
     }
 
     const page = document.body.dataset.page || "";
-
-    const make = (tag, className, text) => {
-        const element = document.createElement(tag);
-
-        if (className) {
-            element.className = className;
-        }
-
-        if (text !== undefined) {
-            element.textContent = text;
-        }
-
-        return element;
-    };
 
     function refineAddActivityForm() {
         const form = document.querySelector(
@@ -92,19 +80,16 @@
 
             form.appendChild(hiddenPolicy);
 
-            const label = make(
-                "label",
-                "form-field pet-friendly-checkbox"
-            );
+            const label = document.createElement("label");
+            label.className = "form-field pet-friendly-checkbox";
 
-            label.appendChild(
-                make("span", "", "Pet friendly")
-            );
+            const title = document.createElement("span");
+            title.textContent = "Pet friendly";
 
-            const line = make("span", "pet-checkbox-line");
+            const line = document.createElement("span");
+            line.className = "pet-checkbox-line";
 
             const checkbox = document.createElement("input");
-
             checkbox.type = "checkbox";
             checkbox.name = "petFriendly";
             checkbox.checked = false;
@@ -115,12 +100,11 @@
                     : "restricted";
             });
 
-            line.append(
-                checkbox,
-                make("span", "", "This activity welcomes pets")
-            );
+            const description = document.createElement("span");
+            description.textContent = "This activity welcomes pets";
 
-            label.appendChild(line);
+            line.append(checkbox, description);
+            label.append(title, line);
             form.appendChild(label);
         }
 
@@ -140,62 +124,20 @@
         }
     }
 
-    function refineMyAdventures() {
-        const main = document.querySelector("main");
-
-        const dashboard = document.getElementById(
-            "my-adventures-dashboard"
-        );
-
-        if (
-            dashboard &&
-            main &&
-            dashboard !== main.firstElementChild
-        ) {
-            main.insertBefore(
-                dashboard,
-                main.firstElementChild
-            );
-        }
-
-        if (dashboard) {
-            dashboard
-                .querySelectorAll(".adventure-dashboard-group")
-                .forEach(group => {
-                    const heading =
-                        group.querySelector("h3")?.textContent || "";
-
-                    if (/holiday|saved holidays/i.test(heading)) {
-                        group.remove();
-                    }
-                });
-
-            dashboard
-                .querySelectorAll(".dashboard-stat-card")
-                .forEach(card => {
-                    const label =
-                        card.querySelector(
-                            ".dashboard-stat-label"
-                        )?.textContent || "";
-
-                    if (/holiday/i.test(label)) {
-                        card.remove();
-                    }
-                });
-        }
-
-        document.querySelectorAll(
-            "main > .holiday-planner-section, " +
-            "main > #saved-holidays, " +
-            "main > .saved-holiday-section"
-        ).forEach(section => section.remove());
-    }
-
     function run() {
         if (page !== "my-adventures") return;
 
         refineAddActivityForm();
-        refineMyAdventures();
+
+        /*
+         * Deliberately do not move or remove dashboard elements.
+         *
+         * home-dashboard.js inserts the Adventure Dashboard
+         * immediately after the welcome section.
+         *
+         * my-adventures.js appends the personal history
+         * after the Adventure Dashboard.
+         */
     }
 
     function initialise() {
