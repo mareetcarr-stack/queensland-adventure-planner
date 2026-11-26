@@ -2,11 +2,7 @@
 "use strict";
 
 /*
- * Adventure Planner — interface refinements
- * Discover: one idea at a time.
- * Shortlist: add experiences from a dropdown.
- * Home: working links and clearer upcoming-plan headings.
- * My Adventures: dashboard first, without holiday/journal sections.
+ * Adventure Planner — page-specific interface refinements.
  */
 
 (() => {
@@ -20,52 +16,6 @@
         return node;
     };
 
-    function refineDiscover() {
-        const panel = document.getElementById("discover-panel");
-        if (!panel) return;
-
-        const actions = panel.querySelector(".discover-actions");
-        const buttons = actions ? [...actions.querySelectorAll("button")] : [];
-        const surprise = buttons[0];
-        const browse = buttons[1];
-        const more = panel.querySelector("#discover-panel > button");
-
-        if (surprise) {
-            surprise.textContent = "Show me an idea";
-        }
-
-        if (browse && surprise) {
-            browse.textContent = "Show another idea";
-            const replacement = browse.cloneNode(true);
-            browse.replaceWith(replacement);
-            replacement.addEventListener("click", () => surprise.click());
-        }
-
-        if (more) more.hidden = true;
-
-        const results = panel.querySelector("#discover-results");
-        const count = panel.querySelector(".discover-meta");
-
-        function showOne() {
-            if (!results) return;
-
-            const cards = [...results.querySelectorAll(".discover-card")];
-            cards.forEach((card, index) => {
-                card.hidden = index !== 0;
-            });
-
-            if (cards.length) {
-                if (count) count.textContent = "One idea at a time. Choose another when you're ready.";
-            }
-        }
-
-        if (results) {
-            const observer = new MutationObserver(showOne);
-            observer.observe(results, { childList: true, subtree: true });
-            showOne();
-        }
-    }
-
     function refineShortlist() {
         if (!planner) return;
 
@@ -78,6 +28,7 @@
         );
 
         const controls = make("div", "shortlist-add-controls");
+
         const search = document.createElement("input");
         search.type = "search";
         search.placeholder = "Find an experience...";
@@ -95,11 +46,11 @@
         count.setAttribute("aria-live", "polite");
 
         const results = make("div", "shortlist-results");
-
         section.append(controls, count, results);
 
         const main = document.querySelector("main");
         const welcome = main?.querySelector(".welcome");
+
         if (welcome) welcome.insertAdjacentElement("afterend", section);
         else main?.appendChild(section);
 
@@ -117,6 +68,7 @@
             const shortlisted = getShortlisted();
 
             select.replaceChildren();
+
             const placeholder = document.createElement("option");
             placeholder.value = "";
             placeholder.textContent = "Choose an experience...";
@@ -132,6 +84,7 @@
                         activity.region,
                         activity.description
                     ].join(" ").toLowerCase();
+
                     return !term || searchable.includes(term);
                 })
                 .sort((a, b) => a.name.localeCompare(b.name))
@@ -148,6 +101,7 @@
             results.replaceChildren();
 
             const shortlisted = getShortlisted();
+
             const activities = planner.getActivities().filter(activity =>
                 shortlisted.has(activity.id) && !planner.isCompleted(activity.id)
             );
@@ -164,12 +118,14 @@
 
             activities.forEach(activity => {
                 const card = make("article", "shortlist-card");
+
                 const name = make("h3", "", activity.name);
                 const location = make(
                     "p",
                     "shortlist-meta",
                     [activity.destination, activity.region].filter(Boolean).join(" · ")
                 );
+
                 const description = make(
                     "p",
                     "",
@@ -196,10 +152,12 @@
 
                 const remove = make("button", "reset-filters", "Remove from shortlist");
                 remove.type = "button";
+
                 remove.addEventListener("click", () => {
                     const updated = getShortlisted();
                     updated.delete(activity.id);
                     planner.data.shortlistedActivities = [...updated];
+
                     if (save()) {
                         populateSelect();
                         render();
@@ -238,15 +196,6 @@
         const dashboard = document.getElementById("home-dashboard");
         if (!dashboard) return;
 
-        dashboard.querySelectorAll(".dashboard-plan-card strong").forEach(node => {
-            node.style.color = "var(--sage-dark)";
-        });
-
-        dashboard.querySelectorAll(".dashboard-plan-type").forEach(node => {
-            node.style.background = "var(--sage)";
-            node.style.color = "#40554B";
-        });
-
         const links = [
             ["Discover Adventures", "discover.html"],
             ["Generate a Day Trip", "plan-day.html"],
@@ -256,8 +205,10 @@
         ];
 
         const grid = dashboard.querySelector(".dashboard-shortcut-grid");
+
         if (grid) {
             grid.replaceChildren();
+
             links.forEach(([label, url]) => {
                 const link = make("a", "dashboard-shortcut", label);
                 link.href = url;
@@ -290,7 +241,6 @@
     }
 
     function initialise() {
-        if (page === "discover") refineDiscover();
         if (page === "shortlist") refineShortlist();
         if (page === "home") refineHome();
         if (page === "my-adventures") refineMyAdventures();
