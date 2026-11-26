@@ -4,7 +4,7 @@
 (() => {
     const planner = window.AdventurePlanner;
     if (!planner) {
-        console.error("Adventure Planner was not available when final-fixes.js loaded.");
+        console.error("Adventure Planner was not available when final-fixes.js initialised.");
         return;
     }
 
@@ -73,11 +73,12 @@
         const name = card.querySelector("h4")?.textContent?.trim();
         if (!name) return null;
         const location = card.querySelector(".discover-location")?.textContent?.trim() || "";
-        const match = planner.getActivities().find(activity =>
+        const activities = planner.getActivities();
+        const match = activities.find(activity =>
             activity.name === name &&
             [activity.destination, activity.region].filter(Boolean).join(" · ") === location
         );
-        return match?.id || planner.getActivities().find(activity => activity.name === name)?.id || null;
+        return match?.id || activities.find(activity => activity.name === name)?.id || null;
     }
 
     function addShortlistButton(card, activityId) {
@@ -106,7 +107,6 @@
     function refineDiscoverCard(card) {
         const id = findActivityId(card);
         if (!id) return;
-
         card.classList.add("discover-card-final");
 
         const details = card.querySelector(".discover-details");
@@ -115,7 +115,6 @@
                 if (/\bfree\b|\bcost\b|\$\s?\d/i.test(item.textContent)) item.remove();
             });
         }
-
         const complete = card.querySelector("button:not(.discover-shortlist-button)");
         if (complete) complete.classList.add("discover-complete-button");
         addShortlistButton(card, id);
@@ -124,7 +123,6 @@
     function refineDiscover() {
         const results = document.getElementById("discover-results");
         if (!results) return;
-
         results.querySelectorAll(".discover-card").forEach(refineDiscoverCard);
 
         if (!document.getElementById("discover-shortlist-count")) {
@@ -161,11 +159,12 @@
 
     function refineAddActivityForm() {
         const form = document.querySelector("#add-activity .activity-form");
-        if (!form || form.dataset.finalFixesApplied === "true") return;
-        form.dataset.finalFixesApplied = "true";
+        if (!form) return;
 
         const heading = document.querySelector("#add-activity h2");
         if (heading) heading.textContent = "Add an Activity";
+        const submit = form.querySelector('button[type="submit"]');
+        if (submit) submit.textContent = "Add Activity";
 
         const estimated = form.elements.namedItem("estimatedCost");
         if (estimated) {
@@ -181,29 +180,27 @@
         }
 
         const oldPet = form.elements.namedItem("dogPolicy");
-        if (oldPet) {
-            const initiallyFriendly = oldPet.value === "friendly";
+        if (oldPet && !form.querySelector('input[name="petFriendly"]')) {
             oldPet.closest("label, .form-field")?.remove();
             oldPet.remove();
 
             const hiddenPolicy = document.createElement("input");
             hiddenPolicy.type = "hidden";
             hiddenPolicy.name = "dogPolicy";
-            hiddenPolicy.value = initiallyFriendly ? "friendly" : "restricted";
+            hiddenPolicy.value = "restricted";
             form.appendChild(hiddenPolicy);
 
             const label = make("label", "form-field pet-friendly-checkbox");
             label.appendChild(make("span", "", "Pet friendly"));
-
             const line = make("span", "pet-checkbox-line");
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
             checkbox.name = "petFriendly";
-            checkbox.checked = initiallyFriendly;
+            checkbox.checked = false;
             checkbox.addEventListener("change", () => {
                 hiddenPolicy.value = checkbox.checked ? "friendly" : "restricted";
             });
-            line.append(checkbox, make("span", "", "Pets are welcome at this activity"));
+            line.append(checkbox, make("span", "", "This activity welcomes pets"));
             label.appendChild(line);
             form.appendChild(label);
         }
@@ -217,40 +214,29 @@
             wrapped.__petFriendlyWrapped = true;
             planner.addActivity = wrapped;
         }
-
-        const submit = form.querySelector('button[type="submit"]');
-        if (submit) submit.textContent = "Add Activity";
     }
 
     function refineMyAdventures() {
         const main = document.querySelector("main");
         const dashboard = document.getElementById("my-adventures-dashboard");
-
-        if (dashboard && main) {
-            const welcome = main.querySelector(":scope > .welcome");
-            const alreadyInPosition = welcome
-                ? dashboard.previousElementSibling === welcome
-                : dashboard === main.firstElementChild;
-            if (!alreadyInPosition) {
-                if (welcome) welcome.insertAdjacentElement("afterend", dashboard);
-                else main.insertBefore(dashboard, main.firstElementChild);
-            }
+        if (dashboard && main && dashboard !== main.firstElementChild) {
+            main.insertBefore(dashboard, main.firstElementChild);
         }
 
-        document.querySelectorAll(
-            "#my-adventures-dashboard .adventure-dashboard-group, " +
-            "main > .holiday-planner-section, main > #saved-holidays, main > .saved-holiday-section"
-        ).forEach(section => {
-            const heading = section.querySelector("h2, h3, h4")?.textContent || "";
-            if (/holiday|saved holidays/i.test(heading)) section.remove();
-        });
-
         if (dashboard) {
+            dashboard.querySelectorAll(".adventure-dashboard-group").forEach(group => {
+                const heading = group.querySelector("h3")?.textContent || "";
+                if (/holiday|saved holidays/i.test(heading)) group.remove();
+            });
             dashboard.querySelectorAll(".dashboard-stat-card").forEach(card => {
                 const label = card.querySelector(".dashboard-stat-label")?.textContent || "";
                 if (/holiday/i.test(label)) card.remove();
             });
         }
+
+        document.querySelectorAll(
+            "main > .holiday-planner-section, main > #saved-holidays, main > .saved-holiday-section"
+        ).forEach(section => section.remove());
     }
 
     function run() {
@@ -271,7 +257,6 @@
 
     function initialise() {
         run();
-
         document.addEventListener("adventureplanner:datachanged", () => {
             if (page === "discover") {
                 updateShortlistCount();
@@ -291,7 +276,6 @@
             const observer = new MutationObserver(run);
             observer.observe(main, { childList: true, subtree: true });
         }
-
         const header = document.querySelector("header");
         if (header?.parentNode) {
             const observer = new MutationObserver(removeShortlistNavigation);
