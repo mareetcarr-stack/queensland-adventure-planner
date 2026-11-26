@@ -1,0 +1,152 @@
+
+/* Adventure Planner — interface refinements */
+
+.dashboard-plan-card strong,
+.dashboard-plan-type {
+    color: var(--sage-dark) !important;
+}
+
+.dashboard-plan-type {
+    background: var(--sage) !important;
+    color: #40554B !important;
+}
+
+.discover-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 18px 0 24px;
+}
+
+.discover-actions button {
+    flex: 0 1 auto;
+    min-width: 190px;
+}
+
+#discover-results {
+    margin-top: 18px;
+}
+
+#discover-results .discover-card {
+    margin: 0;
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: #FFFFFF;
+    box-shadow: var(--shadow);
+}
+
+#discover-results .discover-card h4 {
+    margin-top: 0;
+    color: var(--sage-dark);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.4rem;
+}
+
+#discover-results .discover-card p {
+    line-height: 1.6;
+}
+
+#discover-results .discover-card button {
+    margin-top: 12px;
+}
+
+.shortlist-add-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
+    align-items: center;
+    gap: 12px;
+    margin: 22px 0;
+}
+
+.shortlist-add-controls input,
+.shortlist-add-controls select {
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    min-height: 48px;
+    margin: 0;
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #FFFEFC;
+    color: var(--ink);
+    font: inherit;
+}
+
+.shortlist-add-controls button {
+    height: 48px;
+    white-space: nowrap;
+}
+
+.shortlist-count {
+    margin: 12px 0;
+    font-weight: 650;
+    color: var(--sage-dark);
+}
+
+.shortlist-results {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.shortlist-card {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: #FFFFFF;
+    box-shadow: 0 3px 14px rgba(48, 59, 58, .035);
+}
+
+.shortlist-card h3 {
+    margin: 0 0 6px;
+    color: var(--ink);
+}
+
+.shortlist-card p {
+    margin: 7px 0;
+}
+
+.shortlist-meta {
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+#my-adventures-dashboard .adventure-history-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#my-adventures-dashboard .adventure-history-actions button {
+    min-width: 150px;
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--sage);
+    color: #40554B;
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 650;
+}
+
+#my-adventures-dashboard .adventure-history-actions button:hover {
+    background: #CBDCD4;
+}
+
+@media (max-width: 700px) {
+    .shortlist-add-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .shortlist-add-controls button {
+        width: 100%;
+    }
+
+    .discover-actions button {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
