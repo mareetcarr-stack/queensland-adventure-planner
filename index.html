@@ -16,25 +16,64 @@
     <link rel="stylesheet" href="itinerary-names.css?v=2">
 
     <style>
-        .day-generator-controls > .filter-field {
+        /* Keep all generator controls inside their grid columns. */
+        .day-generator-controls {
             box-sizing: border-box;
             width: 100%;
+            max-width: 100%;
             min-width: 0;
         }
 
+        .day-generator-controls > .filter-field {
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        /* iPhone / Safari date input sizing fix. */
         #generator-date {
-            display: block;
+            display: block !important;
             box-sizing: border-box !important;
+            flex: 0 1 auto !important;
             width: 100% !important;
+            inline-size: 100% !important;
             min-width: 0 !important;
-            max-width: 100% !important;
             min-inline-size: 0 !important;
+            max-width: 100% !important;
             max-inline-size: 100% !important;
+            height: 46px;
+            padding: 10px 8px !important;
+            margin: 0;
+            font-family: inherit;
+            font-size: 16px !important;
+            line-height: normal;
+        }
+
+        /* Constrain Safari's internal date display as well. */
+        #generator-date::-webkit-date-and-time-value {
+            box-sizing: border-box;
+            min-width: 0;
+            max-width: 100%;
+            text-align: left;
+        }
+
+        #generator-date::-webkit-datetime-edit {
+            padding: 0;
+            min-width: 0;
         }
 
         @media (max-width: 600px) {
             .day-generator-controls {
-                grid-template-columns: minmax(0, 1fr);
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+
+            .day-generator-controls > .filter-field {
+                min-width: 0;
+                max-width: 100%;
             }
 
             #generator-date {
