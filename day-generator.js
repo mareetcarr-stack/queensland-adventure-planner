@@ -3,7 +3,7 @@
 
 /*
  * Adventure Planner — Day Generator
- * Destination-based day suggestions, pet filtering and saved-plan links.
+ * Supports a user-defined starting location and distance filtering.
  */
 
 (() => {
@@ -23,10 +23,10 @@
         const introduction = feature.querySelector("p");
         if (introduction) {
             introduction.textContent =
-                "Choose your date, available time and preferences to create a suggested day out.";
+                "Choose where you're starting from, then set your preferences to create a suggested day out.";
         }
 
-        const HOME = { lat: -27.253, lon: 153.083 };
+        const DEFAULT_LOCATION = "Clontarf, Queensland, Australia";
 
         const LOCATIONS = {
             "Redcliffe": [-27.230, 153.113],
@@ -94,18 +94,14 @@
             const lat2 = rad(b.lat);
             const dLat = rad(b.lat - a.lat);
             const dLon = rad(b.lon - a.lon);
-            const value = Math.sin(dLat / 2) ** 2 +
-                Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-            return radius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-        };
 
-        const estimatedDistance = destination => {
-            const coordinates = LOCATIONS[destination];
-            if (!coordinates) return null;
-            return Math.round(distanceBetween(
-                HOME,
-                { lat: coordinates[0], lon: coordinates[1] }
-            ) * 1.3);
+            const value =
+                Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1) * Math.cos(lat2) *
+                Math.sin(dLon / 2) ** 2;
+
+            return radius * 2 *
+                Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
         };
 
         const panel = document.createElement("div");
@@ -121,9 +117,15 @@
                 border-radius:12px;
                 background:#F2EBDD;
             }
-            .day-generator-controls .filter-field { min-width:0; }
+            .day-generator-controls .filter-field {
+                display:flex;
+                flex-direction:column;
+                gap:6px;
+                min-width:0;
+            }
             .day-generator-controls select,
-            .day-generator-controls input[type="date"] {
+            .day-generator-controls input {
+                box-sizing:border-box;
                 width:100%;
                 min-height:46px;
                 padding:10px;
@@ -132,6 +134,13 @@
                 background:#fff;
                 color:var(--ink);
                 font:inherit;
+            }
+            .generator-location-help {
+                display:block;
+                margin-top:5px;
+                color:var(--muted);
+                font-size:.8rem;
+                line-height:1.4;
             }
             .pet-friendly-toggle {
                 display:flex;
@@ -143,7 +152,10 @@
                 background:rgba(255,255,255,.65);
                 font-weight:600;
             }
-            .pet-friendly-toggle input { width:19px;height:19px; }
+            .pet-friendly-toggle input {
+                width:19px;
+                height:19px;
+            }
             .day-generator-actions { margin:18px 0; }
             .day-generator-actions button { min-width:210px; }
             .generated-day {
@@ -159,7 +171,8 @@
                 color:var(--sage-dark);
                 font-size:1.35rem;
             }
-            .generated-day-intro,.generated-day-meta {
+            .generated-day-intro,
+            .generated-day-meta {
                 color:var(--muted);
                 font-size:.9rem;
                 line-height:1.55;
@@ -181,27 +194,50 @@
                 cursor:pointer;
             }
             .generated-activity input {
-                width:19px;height:19px;margin-top:3px;
-                flex-shrink:0;accent-color:var(--sage-dark);
+                width:19px;
+                height:19px;
+                margin-top:3px;
+                flex-shrink:0;
+                accent-color:var(--sage-dark);
             }
-            .generated-activity strong { display:block;color:var(--ink); }
+            .generated-activity strong {
+                display:block;
+                color:var(--ink);
+            }
             .generated-activity span {
-                display:block;margin-top:3px;color:var(--muted);
-                font-size:.88rem;line-height:1.5;
+                display:block;
+                margin-top:3px;
+                color:var(--muted);
+                font-size:.88rem;
+                line-height:1.5;
             }
             .generated-day-summary {
-                margin:16px 0;padding:15px;border-radius:11px;
-                background:#E8DDEB;color:#51465A;font-weight:600;
+                margin:16px 0;
+                padding:15px;
+                border-radius:11px;
+                background:#E8DDEB;
+                color:#51465A;
+                font-weight:600;
                 font-size:.9rem;
             }
-            .day-generator-message { color:var(--sage-dark);font-weight:600; }
+            .day-generator-message {
+                color:var(--sage-dark);
+                font-weight:600;
+            }
             .saved-itinerary-link {
-                display:inline-block;margin:12px 0;padding:11px 16px;
-                border-radius:9px;background:#DCE8E3;color:#30463C;
-                font-weight:650;text-decoration:none;
+                display:inline-block;
+                margin:12px 0;
+                padding:11px 16px;
+                border-radius:9px;
+                background:#DCE8E3;
+                color:#30463C;
+                font-weight:650;
+                text-decoration:none;
             }
             @media(max-width:600px) {
-                .day-generator-controls { grid-template-columns:1fr; }
+                .day-generator-controls {
+                    grid-template-columns:1fr;
+                }
                 .generated-day { padding:16px; }
                 .day-generator-actions button { width:100%; }
             }
@@ -211,8 +247,10 @@
         function createSelect(labelText, id, options) {
             const label = document.createElement("label");
             label.className = "filter-field";
+
             const caption = document.createElement("span");
             caption.textContent = labelText;
+
             const select = document.createElement("select");
             select.id = id;
 
@@ -227,8 +265,29 @@
             return { label, select };
         }
 
+        const locationLabel = document.createElement("label");
+        locationLabel.className = "filter-field";
+
+        const locationCaption = document.createElement("span");
+        locationCaption.textContent = "Where are you starting from?";
+
+        const locationInput = document.createElement("input");
+        locationInput.type = "text";
+        locationInput.id = "generator-start-location";
+        locationInput.value = DEFAULT_LOCATION;
+        locationInput.placeholder = "Enter a suburb, town or address";
+        locationInput.autocomplete = "street-address";
+
+        const locationHelp = document.createElement("small");
+        locationHelp.className = "generator-location-help";
+        locationHelp.textContent =
+            "Enter your current location or somewhere you'll be staying. Include the state or country if needed.";
+
+        locationLabel.append(locationCaption, locationInput, locationHelp);
+
         const dateLabel = document.createElement("label");
         dateLabel.className = "filter-field";
+
         const dateCaption = document.createElement("span");
         dateCaption.textContent = "Date of your outing";
 
@@ -237,55 +296,77 @@
         dateInput.id = "generator-date";
         dateInput.value = localDate();
         dateInput.min = localDate();
+
         dateLabel.append(dateCaption, dateInput);
 
-        const distance = createSelect("Maximum estimated drive distance from Clontarf",
-            "generator-distance", [
-                { value:"any",label:"Any distance" },
-                { value:"25",label:"Up to 25 km" },
-                { value:"50",label:"Up to 50 km" },
-                { value:"75",label:"Up to 75 km" },
-                { value:"100",label:"Up to 100 km" },
-                { value:"150",label:"Up to 150 km" },
-                { value:"200",label:"Up to 200 km" }
-            ]);
+        const distance = createSelect(
+            "Maximum estimated drive distance",
+            "generator-distance",
+            [
+                { value:"any", label:"Any distance" },
+                { value:"25", label:"Up to 25 km" },
+                { value:"50", label:"Up to 50 km" },
+                { value:"75", label:"Up to 75 km" },
+                { value:"100", label:"Up to 100 km" },
+                { value:"150", label:"Up to 150 km" },
+                { value:"200", label:"Up to 200 km" }
+            ]
+        );
 
-        const duration = createSelect("Available activity time",
-            "generator-duration", [
-                { value:"3",label:"Short outing — up to 3 hours" },
-                { value:"4",label:"Half day — up to 4 hours" },
-                { value:"6",label:"Most of the day — up to 6 hours" },
-                { value:"8",label:"Full day — up to 8 hours" }
-            ]);
+        const duration = createSelect(
+            "Available activity time",
+            "generator-duration",
+            [
+                { value:"3", label:"Short outing — up to 3 hours" },
+                { value:"4", label:"Half day — up to 4 hours" },
+                { value:"6", label:"Most of the day — up to 6 hours" },
+                { value:"8", label:"Full day — up to 8 hours" }
+            ]
+        );
 
-        const budget = createSelect("Activity budget per person",
-            "generator-budget", [
-                { value:"any",label:"No fixed budget" },
-                { value:"0",label:"Free activities only" },
-                { value:"25",label:"Up to $25" },
-                { value:"50",label:"Up to $50" },
-                { value:"100",label:"Up to $100" }
-            ]);
+        const budget = createSelect(
+            "Activity budget per person",
+            "generator-budget",
+            [
+                { value:"any", label:"No fixed budget" },
+                { value:"0", label:"Free activities only" },
+                { value:"25", label:"Up to $25" },
+                { value:"50", label:"Up to $50" },
+                { value:"100", label:"Up to $100" }
+            ]
+        );
 
         const petLabel = document.createElement("label");
         petLabel.className = "pet-friendly-toggle";
+
         const petCheckbox = document.createElement("input");
         petCheckbox.type = "checkbox";
         petCheckbox.id = "generator-pet-friendly";
+
         const petText = document.createElement("span");
         petText.textContent = "Pet-friendly options";
+
         petLabel.append(petCheckbox, petText);
 
         const controls = document.createElement("div");
         controls.className = "day-generator-controls";
-        controls.append(dateLabel, distance.label, duration.label, budget.label, petLabel);
+        controls.append(
+            locationLabel,
+            dateLabel,
+            distance.label,
+            duration.label,
+            budget.label,
+            petLabel
+        );
 
         const actions = document.createElement("div");
         actions.className = "day-generator-actions";
+
         const generateButton = document.createElement("button");
         generateButton.type = "button";
         generateButton.className = "add-activity-button";
         generateButton.textContent = "Generate my day out";
+
         actions.appendChild(generateButton);
 
         const results = document.createElement("div");
@@ -298,12 +379,97 @@
         panel.append(controls, actions, results, message);
         feature.appendChild(panel);
 
+        let startingCoordinates = null;
+        let resolvedLocationText = "";
+
+        async function resolveStartingLocation() {
+            const query = locationInput.value.trim();
+
+            if (!query) {
+                throw new Error("Enter a starting location.");
+            }
+
+            if (query === resolvedLocationText && startingCoordinates) {
+                return startingCoordinates;
+            }
+
+            locationHelp.textContent = "Finding your starting location…";
+
+            const searchQuery = /\b(australia|queensland|qld|nsw|vic|tas|wa|sa|nt|act|new zealand)\b/i.test(query)
+                ? query
+                : `${query}, Australia`;
+
+            const url =
+                "https://photon.komoot.io/api/?limit=1&q=" +
+                encodeURIComponent(searchQuery);
+
+            let response;
+
+            try {
+                response = await fetch(url, {
+                    headers: { "Accept": "application/json" }
+                });
+            } catch {
+                throw new Error(
+                    "Unable to look up that location. Check your internet connection and try again."
+                );
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    "The location search is temporarily unavailable. Please try again."
+                );
+            }
+
+            const data = await response.json();
+            const match = data.features?.[0];
+            const coordinates = match?.geometry?.coordinates;
+
+            if (!coordinates || coordinates.length < 2) {
+                throw new Error(
+                    "We couldn't recognise that location. Try entering a suburb, town or full address."
+                );
+            }
+
+            startingCoordinates = {
+                lon: Number(coordinates[0]),
+                lat: Number(coordinates[1])
+            };
+
+            resolvedLocationText = query;
+            locationHelp.textContent =
+                `Starting point found: ${match.properties?.name || query}`;
+
+            return startingCoordinates;
+        }
+
+        locationInput.addEventListener("input", () => {
+            startingCoordinates = null;
+            resolvedLocationText = "";
+            locationHelp.textContent =
+                "Your starting point will be checked when you generate an itinerary.";
+        });
+
+        const estimatedDistance = destination => {
+            const coordinates = LOCATIONS[destination];
+            if (!coordinates || !startingCoordinates) return null;
+
+            return Math.round(
+                distanceBetween(
+                    startingCoordinates,
+                    { lat:coordinates[0], lon:coordinates[1] }
+                ) * 1.3
+            );
+        };
+
         function shuffle(items) {
             const result = [...items];
+
             for (let i = result.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [result[i], result[j]] = [result[j], result[i]];
             }
+
             return result;
         }
 
@@ -317,20 +483,31 @@
                 const hours = Number(activity.durationHours);
                 if (!Number.isFinite(hours) || hours <= 0) return false;
 
-                const planningText = `${activity.name || ""} ${activity.description || ""}`;
+                const planningText =
+                    `${activity.name || ""} ${activity.description || ""}`;
+
                 if (advanceBookingPattern.test(planningText)) return false;
 
-                if (petCheckbox.checked && activity.petFriendly !== true) return false;
+                if (petCheckbox.checked && activity.petFriendly !== true) {
+                    return false;
+                }
 
-                if (budget.select.value !== "any" &&
-                    (activity.estimatedCost == null ||
-                     Number(activity.estimatedCost) > Number(budget.select.value))) {
+                if (
+                    budget.select.value !== "any" &&
+                    (
+                        activity.estimatedCost == null ||
+                        Number(activity.estimatedCost) >
+                            Number(budget.select.value)
+                    )
+                ) {
                     return false;
                 }
 
                 if (distance.select.value !== "any") {
                     const km = estimatedDistance(activity.destination);
-                    if (km === null || km > Number(distance.select.value)) return false;
+                    if (km === null || km > Number(distance.select.value)) {
+                        return false;
+                    }
                 }
 
                 return true;
@@ -348,7 +525,11 @@
             eligibleActivities().forEach(activity => {
                 const destination = (activity.destination || "").trim();
                 if (!destination) return;
-                if (!groups.has(destination)) groups.set(destination, []);
+
+                if (!groups.has(destination)) {
+                    groups.set(destination, []);
+                }
+
                 groups.get(destination).push(activity);
             });
 
@@ -356,7 +537,8 @@
 
             groups.forEach((items, destination) => {
                 const candidates = shuffle(items).sort(
-                    (a, b) => Number(b.durationHours) - Number(a.durationHours)
+                    (a, b) =>
+                        Number(b.durationHours) - Number(a.durationHours)
                 );
 
                 const selected = [];
@@ -364,13 +546,18 @@
 
                 for (const activity of candidates) {
                     const hours = Number(activity.durationHours);
+
                     if (totalHours + hours > maximumHours) continue;
 
                     selected.push(activity);
                     totalHours += hours;
 
-                    if (totalHours >= minimumHours &&
-                        (maximumHours < 8 || selected.length >= 2)) break;
+                    if (
+                        totalHours >= minimumHours &&
+                        (maximumHours < 8 || selected.length >= 2)
+                    ) {
+                        break;
+                    }
                 }
 
                 if (totalHours < minimumHours) return;
@@ -399,41 +586,56 @@
 
             const formattedDate = new Date(`${dateInput.value}T12:00:00`)
                 .toLocaleDateString("en-AU", {
-                    weekday:"long",day:"numeric",month:"long",year:"numeric"
+                    weekday:"long",
+                    day:"numeric",
+                    month:"long",
+                    year:"numeric"
                 });
 
             const intro = document.createElement("p");
             intro.className = "generated-day-intro";
+
+            const distanceText = suggestion.distance === null
+                ? ""
+                : ` · Approximately ${suggestion.distance} km from ${locationInput.value.trim()} (estimated one-way distance)`;
+
             intro.textContent =
-                `${formattedDate} · ${suggestion.region ? suggestion.region + " · " : ""}` +
-                `Approximately ${suggestion.distance ?? "unknown"} km from Clontarf (estimated one-way distance).`;
+                `${formattedDate} · ` +
+                `${suggestion.region ? suggestion.region + " · " : ""}` +
+                `Starting from ${locationInput.value.trim()}${distanceText}`;
 
             const overview = document.createElement("p");
             overview.className = "generated-day-overview";
+
             const activityNames = suggestion.activities.map(item => item.name);
+
             overview.textContent =
-                `A relaxed outing in ${suggestion.destination}, bringing together ` +
-                `${activityNames.join(", ")}. Allow around ${suggestion.totalHours.toFixed(1)} hours ` +
-                `for the activities, with additional time for driving, refreshments and breaks.`;
+                `A lovely day out in ${suggestion.destination}, taking in ` +
+                `${activityNames.join(", ")}. Allow around ` +
+                `${suggestion.totalHours.toFixed(1)} hours for the activities, ` +
+                `plus extra time for travelling, refreshments and breaks.`;
 
             const activityContainer = document.createElement("div");
-            const selectedIds = new Set(suggestion.activities.map(item => item.id));
+            const selectedIds =
+                new Set(suggestion.activities.map(item => item.id));
 
             const summary = document.createElement("div");
             summary.className = "generated-day-summary";
 
             function updateSummary() {
-                const selected = suggestion.activities.filter(item => selectedIds.has(item.id));
-                const hours = selected.reduce((total, item) =>
-                    total + Number(item.durationHours || 0), 0);
-                const knownCost = selected.reduce((total, item) =>
-                    total + (item.estimatedCost == null ? 0 : Number(item.estimatedCost)), 0);
-                const unknownCosts = selected.filter(item => item.estimatedCost == null).length;
+                const selected = suggestion.activities.filter(
+                    item => selectedIds.has(item.id)
+                );
+
+                const hours = selected.reduce(
+                    (total, item) =>
+                        total + Number(item.durationHours || 0),
+                    0
+                );
 
                 summary.textContent =
-                    `${selected.length} experiences · ${hours.toFixed(1)} hours of activity · ` +
-                    `Known costs: $${knownCost.toFixed(2)} per person` +
-                    (unknownCosts ? ` · ${unknownCosts} cost(s) to confirm` : "");
+                    `${selected.length} experiences · ` +
+                    `${hours.toFixed(1)} hours of activity`;
             }
 
             suggestion.activities.forEach((activity, index) => {
@@ -443,13 +645,19 @@
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.checked = true;
+
                 checkbox.addEventListener("change", () => {
-                    if (checkbox.checked) selectedIds.add(activity.id);
-                    else selectedIds.delete(activity.id);
+                    if (checkbox.checked) {
+                        selectedIds.add(activity.id);
+                    } else {
+                        selectedIds.delete(activity.id);
+                    }
+
                     updateSummary();
                 });
 
                 const details = document.createElement("div");
+
                 const name = document.createElement("strong");
                 name.textContent = `${index + 1}. ${activity.name}`;
 
@@ -460,19 +668,12 @@
                 const description = document.createElement("span");
                 description.textContent = activity.description || "";
 
-                const cost = document.createElement("span");
-                cost.textContent = activity.estimatedCost == null
-                    ? "Cost to confirm"
-                    : activity.estimatedCost === 0
-                        ? "Free"
-                        : `Estimated $${activity.estimatedCost} per person`;
-
                 const pet = document.createElement("span");
                 pet.textContent = activity.petFriendly
                     ? "Pet-friendly"
                     : "Not pet-friendly";
 
-                details.append(name, destination, description, cost, pet);
+                details.append(name, destination, description, pet);
                 label.append(checkbox, details);
                 activityContainer.appendChild(label);
             });
@@ -489,7 +690,8 @@
 
             saveButton.addEventListener("click", () => {
                 if (!dateInput.value || dateInput.value < localDate()) {
-                    message.textContent = "Choose today or a future date for your outing.";
+                    message.textContent =
+                        "Choose today or a future date for your outing.";
                     dateInput.focus();
                     return;
                 }
@@ -499,7 +701,8 @@
                     .map(item => item.id);
 
                 if (!ids.length) {
-                    message.textContent = "Select at least one experience before saving.";
+                    message.textContent =
+                        "Select at least one experience before saving.";
                     return;
                 }
 
@@ -509,17 +712,20 @@
                 });
 
                 if (!saved) {
-                    message.textContent = "Unable to save the itinerary. Check browser storage.";
+                    message.textContent =
+                        "Unable to save the itinerary. Check browser storage.";
                     return;
                 }
 
                 const link = document.createElement("a");
                 link.className = "saved-itinerary-link";
-                link.href = `my-adventures.html#saved-itinerary-${encodeURIComponent(saved.id)}`;
+                link.href =
+                    `my-adventures.html#saved-itinerary-${encodeURIComponent(saved.id)}`;
                 link.textContent = "View and edit your saved itinerary";
 
-                message.textContent = "Your itinerary has been saved in My Adventures.";
-                message.appendChild(document.createTextNode(" "));
+                message.textContent =
+                    "Your itinerary has been saved in My Adventures. ";
+
                 message.appendChild(link);
 
                 saveButton.disabled = true;
@@ -531,31 +737,55 @@
             });
 
             updateSummary();
-            card.append(heading, intro, overview, activityContainer, summary, note, saveButton);
+
+            card.append(
+                heading,
+                intro,
+                overview,
+                activityContainer,
+                summary,
+                note,
+                saveButton
+            );
+
             results.appendChild(card);
         }
 
-        function generate() {
+        async function generate() {
             message.replaceChildren();
+            results.replaceChildren();
 
             if (!dateInput.value || dateInput.value < localDate()) {
-                message.textContent = "Choose today or a future date before generating an outing.";
+                message.textContent =
+                    "Choose today or a future date before generating an outing.";
                 dateInput.focus();
                 return;
             }
 
-            const suggestions = buildSuggestions();
+            generateButton.disabled = true;
+            generateButton.textContent = "Checking location…";
 
-            if (!suggestions.length) {
-                results.replaceChildren();
-                const empty = document.createElement("p");
-                empty.textContent =
-                    "No suitable itineraries match these preferences. Try increasing your distance, time or budget, or untick Pet-friendly options.";
-                results.appendChild(empty);
-                return;
+            try {
+                await resolveStartingLocation();
+
+                const suggestions = buildSuggestions();
+
+                if (!suggestions.length) {
+                    const empty = document.createElement("p");
+                    empty.textContent =
+                        "No suitable itineraries match these preferences. Try increasing your distance, time or budget, or untick Pet-friendly options.";
+                    results.appendChild(empty);
+                    return;
+                }
+
+                displaySuggestion(suggestions[0]);
+            } catch (error) {
+                message.textContent = error.message ||
+                    "Unable to determine your starting location.";
+            } finally {
+                generateButton.disabled = false;
+                generateButton.textContent = "Generate my day out";
             }
-
-            displaySuggestion(suggestions[0]);
         }
 
         generateButton.addEventListener("click", generate);
