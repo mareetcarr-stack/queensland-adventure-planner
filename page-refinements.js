@@ -16,34 +16,33 @@
     const page = document.body.dataset.page || "";
 
     function arrangeMyAdventures() {
-        if (page !== "my-adventures") return;
+    if (page !== "my-adventures") return;
 
-        const main = document.querySelector("main");
-        if (!main) return;
+    const main = document.querySelector("main");
+    if (!main) return;
 
-        const welcome = main.querySelector(".welcome");
-        const dashboard = document.getElementById("home-dashboard");
-        const history = document.getElementById(
-            "my-adventures-dashboard"
-        );
+    const welcome = main.querySelector(".welcome");
+    const history = document.getElementById("my-adventures-dashboard");
+    const dashboard = document.getElementById("home-dashboard");
 
-        // Keep the welcome section first.
-        if (welcome) {
-            main.insertBefore(welcome, main.firstChild);
-        }
-
-        // Put the Adventure Dashboard directly below the welcome.
-        if (welcome && dashboard) {
-            welcome.insertAdjacentElement("afterend", dashboard);
-        }
-
-        // Put personal adventure history directly below the dashboard.
-        if (dashboard && history) {
-            dashboard.insertAdjacentElement("afterend", history);
-        } else if (welcome && history) {
-            welcome.insertAdjacentElement("afterend", history);
-        }
+    if (welcome) {
+        main.insertBefore(welcome, main.firstChild);
     }
+
+    // Coloured cards dashboard directly under the welcome heading
+    if (welcome && history) {
+        welcome.insertAdjacentElement("afterend", history);
+    } else if (history) {
+        main.insertBefore(history, main.firstChild);
+    }
+
+    // Optional home dashboard after the coloured cards
+    if (history && dashboard) {
+        history.insertAdjacentElement("afterend", dashboard);
+    } else if (welcome && dashboard) {
+        welcome.insertAdjacentElement("afterend", dashboard);
+    }
+}
 
     function initialise() {
         if (page !== "my-adventures") return;
