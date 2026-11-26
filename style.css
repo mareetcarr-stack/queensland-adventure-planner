@@ -1192,3 +1192,125 @@ footer {
     color: var(--forest);
     font-weight: 600;
 }
+
+
+/* Adventure Home Dashboard */
+
+.home-dashboard {
+    margin: 24px 0;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--white);
+    box-shadow: 0 3px 12px rgba(24, 59, 53, .05);
+}
+
+.home-dashboard h2 {
+    margin-top: 0;
+}
+
+.dashboard-welcome,
+.dashboard-empty {
+    color: var(--muted);
+}
+
+.dashboard-statistics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 12px;
+    margin: 20px 0 28px;
+}
+
+.dashboard-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 15px;
+    border-radius: 9px;
+    background: var(--surface);
+}
+
+.dashboard-stat-value {
+    color: var(--forest);
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.dashboard-stat-label {
+    font-weight: 700;
+}
+
+.dashboard-stat-detail {
+    color: var(--muted);
+    font-size: .8rem;
+}
+
+.dashboard-upcoming,
+.dashboard-shortcuts,
+.dashboard-recent {
+    margin-top: 26px;
+}
+
+.dashboard-plan-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0;
+    padding: 13px 15px;
+    border-left: 4px solid var(--accent);
+    border-radius: 5px;
+    background: var(--surface);
+}
+
+.dashboard-plan-type,
+.dashboard-plan-date {
+    color: var(--muted);
+    font-size: .85rem;
+}
+
+.dashboard-shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 10px;
+}
+
+.dashboard-shortcut {
+    display: block;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--forest);
+    background: var(--surface);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .15s ease;
+}
+
+.dashboard-shortcut:hover,
+.dashboard-shortcut:focus {
+    background: #dfe8df;
+    outline: 2px solid var(--forest-light);
+}
+
+.dashboard-completed-list {
+    padding-left: 22px;
+}
+
+.dashboard-completed-list li {
+    margin: 7px 0;
+}
+
+@media (max-width: 600px) {
+    .home-dashboard {
+        padding: 16px;
+    }
+
+    .dashboard-statistics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-shortcut-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
