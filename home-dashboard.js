@@ -39,17 +39,13 @@
         const shortcuts = document.createElement("div");
         shortcuts.className = "dashboard-shortcuts";
 
-        const recent = document.createElement("div");
-        recent.className = "dashboard-recent";
-
         section.append(
-            heading,
-            welcome,
-            statistics,
-            upcoming,
-            shortcuts,
-            recent
-        );
+    heading,
+    welcome,
+    statistics,
+    upcoming,
+    shortcuts
+);
 
         const main = document.querySelector("main");
         const welcomeSection = main?.querySelector(".welcome");
