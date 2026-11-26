@@ -790,3 +790,121 @@ footer {
         width: 100%;
     }
 }
+
+
+/* Holiday Budget Planner */
+
+.budget-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: end;
+    margin: 18px 0;
+    padding: 18px;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.budget-form .add-activity-button {
+    grid-column: auto;
+    min-width: 140px;
+}
+
+#holiday-budget-message {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--forest);
+    font-weight: 600;
+}
+
+.budget-comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.budget-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--white);
+}
+
+.budget-stat span {
+    color: var(--muted);
+    font-size: .9rem;
+}
+
+.budget-stat strong {
+    color: var(--forest);
+    font-size: 1.25rem;
+    overflow-wrap: anywhere;
+}
+
+.budget-stat.over-budget strong {
+    color: #a52d2d;
+}
+
+.budget-progress-section {
+    margin: 18px 0 28px;
+    padding: 18px;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.budget-progress-label {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.budget-progress-track {
+    height: 16px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #dce3dc;
+}
+
+.budget-progress-bar {
+    height: 100%;
+    border-radius: 20px;
+    background: var(--forest-light);
+    transition: width .2s ease;
+}
+
+.budget-progress-bar.budget-progress-warning {
+    background: #d9a75b;
+}
+
+.budget-progress-bar.budget-progress-over {
+    background: #b43c36;
+}
+
+.all-holiday-budgets {
+    display: grid;
+    gap: 12px;
+}
+
+.budget-holiday-card button {
+    margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+    .budget-form {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-form .add-activity-button {
+        grid-column: 1;
+    }
+
+    .budget-comparison {
+        grid-template-columns: 1fr;
+    }
+}
