@@ -3,19 +3,20 @@
 
 /*
  * My Adventures Dashboard
- * Shows completed experiences, saved day itineraries and holiday plans.
+ * Tracks completed experiences, saved itineraries and holiday plans.
+ * Refreshes when other app features change personal data.
  */
 
 (() => {
     function initialiseMyAdventures() {
         if (!window.AdventurePlanner) return;
 
+        const planner = window.AdventurePlanner;
+
         const existing = document.getElementById("my-adventures-dashboard");
         if (existing) existing.remove();
 
-        const planner = window.AdventurePlanner;
         const section = document.createElement("section");
-
         section.className = "feature";
         section.id = "my-adventures-dashboard";
 
@@ -84,10 +85,6 @@
                 flex-wrap: wrap;
                 gap: 8px;
                 margin-top: 12px;
-            }
-
-            #my-adventures-dashboard .adventure-history-actions button {
-                flex: 0 1 auto;
             }
 
             @media (max-width: 500px) {
@@ -165,18 +162,21 @@
 
         function makeStat(value, label) {
             const box = makeElement("div", "adventure-stat");
+
             box.append(
                 makeElement("strong", "", value),
                 makeElement("span", "", label)
             );
+
             return box;
         }
 
         function render() {
             const activities = planner.getActivities();
-            const completedIds = [...new Set(
-                planner.data.completedActivities || []
-            )];
+
+            const completedIds = [
+                ...new Set(planner.data.completedActivities || [])
+            ];
 
             const completed = completedIds
                 .map(id => activities.find(activity => activity.id === id))
@@ -184,11 +184,13 @@
 
             const itineraries = [
                 ...(planner.data.savedItineraries || [])
-            ].sort((a, b) => b.date.localeCompare(a.date));
+            ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
             const holidays = [
                 ...(planner.data.savedHolidayPlans || [])
-            ].sort((a, b) => a.startDate.localeCompare(b.startDate));
+            ].sort((a, b) =>
+                (a.startDate || "").localeCompare(b.startDate || "")
+            );
 
             const customActivities = planner.data.activities || [];
 
@@ -209,7 +211,7 @@
                     makeElement(
                         "p",
                         "",
-                        "Your completed experiences will appear here. Mark an activity as completed in Discover Adventures."
+                        "Your completed experiences will appear here."
                     )
                 );
             } else {
@@ -364,14 +366,6 @@
                         "adventure-history-card"
                     );
 
-                    const title = makeElement("h4", "", holiday.name);
-
-                    const dateRange = makeElement(
-                        "p",
-                        "",
-                        `${formatDate(holiday.startDate)} to ${formatDate(holiday.endDate)}`
-                    );
-
                     const dayList = document.createElement("ul");
                     let activityCount = 0;
 
@@ -385,20 +379,26 @@
 
                         activityCount += names.length;
 
-                        const item = makeElement(
-                            "li",
-                            "",
-                            `Day ${index + 1}: ${
-                                names.length ? names.join(", ") : "No activities planned"
-                            }`
+                        dayList.appendChild(
+                            makeElement(
+                                "li",
+                                "",
+                                `Day ${index + 1}: ${
+                                    names.length
+                                        ? names.join(", ")
+                                        : "No activities planned"
+                                }`
+                            )
                         );
-
-                        dayList.appendChild(item);
                     });
 
                     card.append(
-                        title,
-                        dateRange,
+                        makeElement("h4", "", holiday.name),
+                        makeElement(
+                            "p",
+                            "",
+                            `${formatDate(holiday.startDate)} to ${formatDate(holiday.endDate)}`
+                        ),
                         makeElement(
                             "p",
                             "",
@@ -453,10 +453,33 @@
             }
         }
 
+        // Debounced refresh catches changes made by other app features.
+        let refreshPending = false;
+
+        function scheduleRefresh() {
+            if (refreshPending) return;
+
+            refreshPending = true;
+
+            window.setTimeout(() => {
+                refreshPending = false;
+                render();
+            }, 0);
+        }
+
         render();
 
-        // Refresh the dashboard when another app feature changes stored data.
-        window.addEventListener("storage", render);
+        window.addEventListener("storage", scheduleRefresh);
+        window.addEventListener("focus", scheduleRefresh);
+        window.addEventListener("pageshow", scheduleRefresh);
+
+        document.addEventListener("click", scheduleRefresh);
+        document.addEventListener("change", scheduleRefresh);
+
+        document.addEventListener(
+            "adventureplanner:datachanged",
+            scheduleRefresh
+        );
 
         console.log("My Adventures dashboard initialised.");
     }
