@@ -1,0 +1,85 @@
+/* Equal-height Discover cards and consistently aligned actions */
+#discover-results.discover-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+    align-items: stretch;
+    gap: 18px;
+}
+#discover-results .discover-card {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+}
+#discover-results .discover-card .discover-details { margin-bottom: 18px; }
+#discover-results .discover-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: auto;
+    padding-top: 18px;
+}
+#discover-results .discover-card-actions button {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 650;
+    line-height: 1.2;
+    cursor: pointer;
+}
+#discover-results .discover-card-actions .discover-shortlist-button {
+    background: #F2EBDD;
+    color: #51483D;
+}
+#discover-results .discover-card-actions .discover-shortlist-button.is-shortlisted {
+    background: #DCE8E3;
+    color: #40554B;
+}
+#discover-results .discover-card-actions .discover-complete-button {
+    background: var(--sage, #DCE8E3);
+    color: #40554B;
+}
+#discover-shortlist-count {
+    margin: 12px 0 0;
+    color: var(--sage-dark, #526D60);
+    font-size: .88rem;
+    font-weight: 650;
+}
+
+/* Add an Activity pet-friendly checkbox */
+#add-activity .pet-friendly-checkbox {
+    grid-column: 1 / -1;
+    gap: 8px;
+}
+#add-activity .pet-checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: #F2EBDD;
+    color: var(--ink, #303B3A);
+    font-weight: 500;
+}
+#add-activity .pet-checkbox-line input {
+    width: 19px;
+    height: 19px;
+    min-height: 19px;
+    margin: 0;
+    accent-color: var(--sage-dark, #526D60);
+}
+@media (max-width: 650px) {
+    #discover-results .discover-card-actions { padding-top: 14px; }
+}
