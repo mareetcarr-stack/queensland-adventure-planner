@@ -1,0 +1,857 @@
+
+:root {
+    --ivory: #F7F5F1;
+    --white: #FFFFFF;
+    --sage: #DCE8E3;
+    --sage-dark: #718B7F;
+    --lilac: #E8DDEB;
+    --peach: #F2E2D4;
+    --terracotta: #D77F70;
+    --terracotta-dark: #BD695C;
+    --ink: #303B3A;
+    --muted: #78817E;
+    --border: #E8E5E0;
+    --surface: #F1EFEB;
+    --danger: #B85F5F;
+    --shadow: 0 8px 28px rgba(48, 59, 58, .055);
+    --radius: 16px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behaviour: smooth;
+}
+
+body {
+    margin: 0;
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: "Inter", "Avenir Next", Avenir, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+}
+
+header {
+    padding: 42px 24px 38px;
+    background: var(--sage);
+    color: var(--ink);
+    text-align: center;
+}
+
+header h1 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2rem, 5vw, 3.1rem);
+    font-weight: 500;
+    letter-spacing: -.045em;
+    line-height: 1.15;
+}
+
+header p {
+    margin: 10px 0 0;
+    color: #596A63;
+    font-size: .96rem;
+    letter-spacing: .025em;
+}
+
+main {
+    width: min(100% - 40px, 1120px);
+    margin: 38px auto 64px;
+}
+
+h1, h2, h3, h4 {
+    color: var(--ink);
+    line-height: 1.3;
+}
+
+h2 {
+    margin-top: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.65rem, 3vw, 2.15rem);
+    font-weight: 500;
+    letter-spacing: -.025em;
+}
+
+h3 {
+    font-size: 1.12rem;
+    font-weight: 650;
+}
+
+p {
+    color: var(--muted);
+}
+
+.welcome {
+    margin: 0 0 30px;
+    padding: 38px;
+    border-radius: 22px;
+    background: var(--sage);
+}
+
+.welcome h2 {
+    max-width: 650px;
+    margin-bottom: 10px;
+    color: #35463F;
+    font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.welcome p {
+    max-width: 620px;
+    margin-bottom: 0;
+    color: #596A63;
+    font-size: 1.02rem;
+}
+
+.feature,
+.home-dashboard,
+#activity-browser,
+#day-planner,
+#my-activities,
+#backup-section,
+#my-adventures,
+#my-shortlist,
+#adventure-map-section,
+#experience-journal,
+#calendar-export,
+#holiday-expenses,
+#holiday-budget,
+#holiday-packing,
+#holiday-bookings,
+#holiday-travel-pack {
+    margin: 22px 0;
+    padding: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.feature > h2,
+.feature > h3 {
+    margin-top: 0;
+}
+
+.feature > p:first-of-type {
+    max-width: 760px;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin: 28px 0;
+}
+
+.feature-card,
+.activity-card,
+.holiday-day-card,
+.journal-card,
+.holiday-booking-card,
+.packing-category,
+.budget-stat {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--white);
+    box-shadow: 0 3px 14px rgba(48, 59, 58, .035);
+}
+
+.feature-card h3,
+.activity-card h3 {
+    margin-top: 0;
+}
+
+.activity-card {
+    margin: 14px 0;
+}
+
+.activity-card h3 {
+    margin-bottom: 8px;
+}
+
+.activity-card p {
+    margin: 7px 0;
+}
+
+.activity-card .activity-meta {
+    color: var(--muted);
+    font-size: .88rem;
+}
+
+.search-input,
+input[type="search"],
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #FFFEFC;
+    color: var(--ink);
+    font: inherit;
+}
+
+.search-input,
+input[type="search"] {
+    width: 100%;
+    min-height: 48px;
+    margin: 12px 0 18px;
+    padding: 12px 15px;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+select {
+    min-height: 44px;
+    padding: 9px 12px;
+}
+
+textarea {
+    width: 100%;
+    min-height: 105px;
+    padding: 12px;
+    resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--terracotta);
+    outline-offset: 2px;
+}
+
+.activity-filters,
+.discover-controls,
+.map-view-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0 24px;
+}
+
+.filter-field,
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    color: var(--ink);
+    font-size: .88rem;
+    font-weight: 600;
+}
+
+.filter-field select,
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+}
+
+.activity-form,
+.expense-form,
+.booking-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 22px;
+}
+
+.activity-form {
+    padding: 22px;
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.activity-form > label:nth-of-type(4),
+.activity-form > button,
+.activity-form > p,
+.expense-form > label:nth-of-type(5),
+.expense-form > button,
+#expense-message,
+.booking-form > label:nth-last-of-type(1),
+.booking-form > button,
+.booking-form > p {
+    grid-column: 1 / -1;
+}
+
+button,
+.add-activity-button,
+.reset-filters {
+    min-height: 42px;
+    padding: 10px 17px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--terracotta);
+    color: var(--white);
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background .18s ease, transform .18s ease;
+}
+
+button:hover,
+.add-activity-button:hover {
+    background: var(--terracotta-dark);
+    transform: translateY(-1px);
+}
+
+button:focus-visible {
+    outline: 3px solid var(--sage-dark);
+    outline-offset: 3px;
+}
+
+.reset-filters,
+.activity-card button,
+.packing-remove {
+    border-color: var(--border);
+    background: var(--sage);
+    color: #40554B;
+}
+
+.reset-filters:hover,
+.activity-card button:hover,
+.packing-remove:hover {
+    background: #CBDCD4;
+    color: var(--ink);
+}
+
+#add-activity-message,
+#day-planner-message,
+#holiday-editor-message,
+#holiday-planner-message,
+#backup-message,
+#holiday-budget-message,
+#expense-message,
+.booking-message,
+.packing-message,
+.journal-message,
+.travel-pack-message,
+.map-view-message {
+    color: var(--sage-dark);
+    font-weight: 650;
+}
+
+.day-planner-activities,
+.journal-results,
+.saved-holiday-list,
+.holiday-booking-list,
+.packing-categories,
+.expense-list {
+    display: grid;
+    gap: 13px;
+    margin: 18px 0;
+}
+
+.day-planner-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #FFFEFC;
+    cursor: pointer;
+}
+
+.day-planner-choice input,
+.packing-item-label input {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+    accent-color: var(--sage-dark);
+}
+
+.day-planner-choice > span {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.day-planner-choice strong {
+    color: var(--ink);
+}
+
+.day-planner-choice span span {
+    color: var(--muted);
+    font-size: .88rem;
+}
+
+.day-planner-summary,
+.expense-summary,
+.packing-progress,
+.budget-progress-section,
+.holiday-day-summary {
+    margin: 18px 0;
+    padding: 18px;
+    border-radius: 13px;
+    background: var(--sage);
+    color: #40554B;
+}
+
+.holiday-planner-section {
+    margin-top: 24px;
+}
+
+.holiday-planner-section .activity-form,
+.expense-form,
+.booking-form,
+.journal-editor {
+    padding: 20px;
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.holiday-planner-section input[type="search"],
+.holiday-planner-section select,
+.holiday-day-card select,
+#holiday-expenses > label select,
+#holiday-packing > label select,
+#holiday-bookings > label select,
+#holiday-travel-pack > label select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #FFFEFC;
+    color: var(--ink);
+    font: inherit;
+}
+
+.holiday-day-card {
+    margin-top: 18px;
+}
+
+.holiday-day-card h3 {
+    margin-top: 0;
+}
+
+.holiday-assigned-list {
+    display: grid;
+    gap: 9px;
+    margin-top: 16px;
+}
+
+.holiday-assigned-item,
+.calendar-export-row,
+.expense-card,
+.packing-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: #FFFEFC;
+}
+
+.holiday-assigned-item span,
+.calendar-export-row span {
+    overflow-wrap: anywhere;
+}
+
+.saved-holiday-days {
+    display: grid;
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.saved-holiday-day {
+    padding: 15px;
+    border-radius: 11px;
+    background: var(--peach);
+}
+
+.saved-holiday-day strong {
+    color: var(--ink);
+}
+
+.saved-holiday-day ul {
+    margin-bottom: 0;
+    padding-left: 22px;
+    line-height: 1.7;
+}
+
+.budget-form,
+.packing-add-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+    margin: 18px 0;
+    padding: 18px;
+    border-radius: 13px;
+    background: var(--surface);
+}
+
+.budget-comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 13px;
+    margin: 18px 0;
+}
+
+.budget-stat span {
+    display: block;
+    color: var(--muted);
+    font-size: .88rem;
+}
+
+.budget-stat strong,
+.expense-total strong {
+    color: var(--ink);
+    font-size: 1.5rem;
+}
+
+.budget-progress-track,
+.packing-progress-track {
+    height: 13px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #E6E3DE;
+}
+
+.budget-progress-bar,
+.packing-progress-bar {
+    height: 100%;
+    border-radius: 20px;
+    background: var(--sage-dark);
+}
+
+.budget-progress-bar.budget-progress-warning {
+    background: #D7A66F;
+}
+
+.budget-progress-bar.budget-progress-over {
+    background: var(--danger);
+}
+
+.packing-category {
+    margin: 12px 0;
+}
+
+.packing-category-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.packing-category-heading h3 {
+    margin: 0;
+}
+
+.packing-items {
+    display: grid;
+    gap: 8px;
+}
+
+.packing-item-label {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.packing-checked {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+.packing-remove {
+    min-height: 32px;
+    padding: 5px 10px;
+}
+
+.expense-card {
+    align-items: flex-start;
+}
+
+.expense-card p {
+    margin: 5px 0;
+    overflow-wrap: anywhere;
+}
+
+.expense-amount {
+    color: var(--ink);
+    white-space: nowrap;
+}
+
+.expense-actions,
+.journal-actions,
+.booking-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.journal-editor {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.journal-rating {
+    color: var(--terracotta-dark);
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+}
+
+.journal-notes {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.booking-category,
+.dashboard-plan-type {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--lilac);
+    color: #65566B;
+    font-size: .82rem;
+    font-weight: 650;
+}
+
+.dashboard-welcome,
+.dashboard-empty {
+    color: var(--muted);
+}
+
+.dashboard-statistics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 13px;
+    margin: 22px 0 30px;
+}
+
+.dashboard-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px;
+    border-radius: 14px;
+    background: var(--sage);
+}
+
+.dashboard-stat-card:nth-child(2) {
+    background: var(--lilac);
+}
+
+.dashboard-stat-card:nth-child(3) {
+    background: var(--peach);
+}
+
+.dashboard-stat-value {
+    color: var(--ink);
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.dashboard-stat-label {
+    font-weight: 700;
+}
+
+.dashboard-stat-detail,
+.dashboard-plan-date {
+    color: var(--muted);
+    font-size: .82rem;
+}
+
+.dashboard-upcoming,
+.dashboard-shortcuts,
+.dashboard-recent {
+    margin-top: 28px;
+}
+
+.dashboard-plan-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0;
+    padding: 16px;
+    border-left: 4px solid var(--terracotta);
+    border-radius: 10px;
+    background: var(--peach);
+}
+
+.dashboard-shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 11px;
+}
+
+.dashboard-shortcut {
+    display: block;
+    padding: 13px 15px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--lilac);
+    color: #5E5065;
+    font-weight: 650;
+    text-decoration: none;
+    transition: background .18s ease;
+}
+
+.dashboard-shortcut:hover {
+    background: #DCCBDD;
+}
+
+.dashboard-completed-list {
+    padding-left: 22px;
+}
+
+.dashboard-completed-list li {
+    margin: 7px 0;
+}
+
+#my-shortlist,
+#my-adventures {
+    min-height: 200px;
+}
+
+#adventure-map {
+    width: 100%;
+    height: 520px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    z-index: 1;
+}
+
+.map-view-legend {
+    color: var(--muted);
+    font-size: .85rem;
+}
+
+.map-popup h3 {
+    color: var(--ink);
+}
+
+.map-popup-activity button {
+    background: var(--sage);
+    color: var(--ink);
+}
+
+#calendar-export h3 {
+    margin-top: 26px;
+}
+
+footer {
+    margin-top: 56px;
+    padding: 25px 18px;
+    background: var(--sage);
+    color: #596A63;
+    text-align: center;
+    font-size: .88rem;
+}
+
+#backup-section input[type="file"] {
+    display: block;
+    margin-top: 10px;
+}
+
+@media (max-width: 700px) {
+    main {
+        width: min(100% - 24px, 1120px);
+        margin: 22px auto 42px;
+    }
+
+    header {
+        padding: 32px 18px;
+    }
+
+    .welcome {
+        padding: 25px 22px;
+    }
+
+    .feature,
+    .home-dashboard,
+    #activity-browser,
+    #day-planner,
+    #my-activities,
+    #backup-section,
+    #my-adventures,
+    #my-shortlist,
+    #adventure-map-section,
+    #experience-journal,
+    #calendar-export,
+    #holiday-expenses,
+    #holiday-budget,
+    #holiday-packing,
+    #holiday-bookings,
+    #holiday-travel-pack {
+        padding: 19px;
+        border-radius: 13px;
+    }
+
+    .feature-grid,
+    .activity-filters,
+    .discover-controls,
+    .map-view-controls,
+    .activity-form,
+    .expense-form,
+    .booking-form {
+        grid-template-columns: 1fr;
+    }
+
+    .activity-form > *,
+    .expense-form > *,
+    .booking-form > * {
+        grid-column: 1;
+    }
+
+    .budget-comparison {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .budget-form,
+    .packing-add-form {
+        grid-template-columns: 1fr;
+    }
+
+    .budget-form > button,
+    .packing-add-form > button {
+        grid-column: 1;
+    }
+
+    .holiday-assigned-item,
+    .calendar-export-row,
+    .expense-card,
+    .packing-item {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .dashboard-statistics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .dashboard-shortcut-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #adventure-map {
+        height: 430px;
+    }
+}
+
+@media (max-width: 380px) {
+    .dashboard-shortcut-grid,
+    .dashboard-statistics,
+    .budget-comparison {
+        grid-template-columns: 1fr;
+    }
+}
