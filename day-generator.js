@@ -3,7 +3,7 @@
 
 /*
  * Adventure Planner — Day Generator
- * Supports a user-defined starting location and distance filtering.
+ * User-defined starting location and estimated distance filtering.
  */
 
 (() => {
@@ -31,6 +31,7 @@
         const LOCATIONS = {
             "Redcliffe": [-27.230, 153.113],
             "Woody Point": [-27.256, 153.104],
+            "Wellington Point": [-27.483, 153.245],
             "Bribie Island": [-27.064, 153.158],
             "Maleny": [-26.760, 152.850],
             "Noosa": [-26.395, 153.091],
@@ -395,12 +396,15 @@
 
             locationHelp.textContent = "Finding your starting location…";
 
-            const searchQuery = /\b(australia|queensland|qld|nsw|vic|tas|wa|sa|nt|act|new zealand)\b/i.test(query)
-                ? query
-                : `${query}, Australia`;
+            const searchQuery =
+                /\b(australia|queensland|qld|nsw|vic|tas|wa|sa|nt|act|new zealand)\b/i.test(query)
+                    ? query
+                    : `${query}, Australia`;
 
+            // Request several matches so an incorrect first result does not
+            // prevent the correct Australian location from being selected.
             const url =
-                "https://photon.komoot.io/api/?limit=1&q=" +
+                "https://photon.komoot.io/api/?limit=10&q=" +
                 encodeURIComponent(searchQuery);
 
             let response;
@@ -422,18 +426,62 @@
             }
 
             const data = await response.json();
-            const match = data.features?.[0];
-            const coordinates = match?.geometry?.coordinates;
+            const features = Array.isArray(data.features)
+                ? data.features
+                : [];
 
-            if (!coordinates || coordinates.length < 2) {
+            const australianFeatures = features.filter(feature =>
+                String(feature.properties?.country || "").toLowerCase() ===
+                "australia"
+            );
+
+            const requestedState = searchQuery.match(
+                /\b(Queensland|New South Wales|Victoria|Tasmania|Western Australia|South Australia|Northern Territory|Australian Capital Territory|Qld|NSW|Vic|Tas|WA|SA|NT|ACT)\b/i
+            )?.[0];
+
+            const stateAliases = {
+                qld: "Queensland",
+                nsw: "New South Wales",
+                vic: "Victoria",
+                tas: "Tasmania",
+                wa: "Western Australia",
+                sa: "South Australia",
+                nt: "Northern Territory",
+                act: "Australian Capital Territory"
+            };
+
+            const normaliseState = value => {
+                const state = String(value || "").trim();
+                return stateAliases[state.toLowerCase()] || state;
+            };
+
+            const matchingState = requestedState
+                ? australianFeatures.filter(feature =>
+                    normaliseState(feature.properties?.state).toLowerCase() ===
+                    normaliseState(requestedState).toLowerCase()
+                )
+                : [];
+
+            const match = matchingState[0] || australianFeatures[0];
+            const coordinates = match?.geometry?.coordinates;
+            const longitude = Number(coordinates?.[0]);
+            const latitude = Number(coordinates?.[1]);
+
+            if (
+                !match ||
+                !Number.isFinite(longitude) ||
+                !Number.isFinite(latitude) ||
+                longitude < 110 || longitude > 155 ||
+                latitude < -45 || latitude > -8
+            ) {
                 throw new Error(
-                    "We couldn't recognise that location. Try entering a suburb, town or full address."
+                    "We couldn't find a matching Australian location. Try adding the state, for example “Clontarf, Queensland”."
                 );
             }
 
             startingCoordinates = {
-                lon: Number(coordinates[0]),
-                lat: Number(coordinates[1])
+                lon: longitude,
+                lat: latitude
             };
 
             resolvedLocationText = query;
@@ -451,8 +499,12 @@
         });
 
         const estimatedDistance = destination => {
-            const coordinates = LOCATIONS[destination];
-            if (!coordinates || !startingCoordinates) return null;
+            if (!startingCoordinates) return null;
+
+            const destinationName = String(destination || "").trim();
+            const coordinates = LOCATIONS[destinationName];
+
+            if (!coordinates) return null;
 
             return Math.round(
                 distanceBetween(
