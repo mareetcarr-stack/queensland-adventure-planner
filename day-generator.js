@@ -3,7 +3,9 @@
 
 /*
  * Adventure Planner — Day Generator
- * User-defined starting location and estimated distance filtering.
+ * Supports user-entered starting locations and distance-based suggestions.
+ * When a distance limit is selected, shorter local outings remain eligible
+ * rather than being discarded for not meeting the usual duration target.
  */
 
 (() => {
@@ -82,6 +84,19 @@
             "Tallebudgera Creek": [-28.112, 153.456]
         };
 
+        const normalise = value =>
+            String(value || "")
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, "");
+
+        const LOCATION_LOOKUP = new Map(
+            Object.entries(LOCATIONS).map(([name, coordinates]) => [
+                normalise(name),
+                coordinates
+            ])
+        );
+
         const localDate = () => {
             const now = new Date();
             return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -89,20 +104,25 @@
         };
 
         const distanceBetween = (a, b) => {
-            const rad = value => value * Math.PI / 180;
+            const radians = value => value * Math.PI / 180;
             const radius = 6371;
-            const lat1 = rad(a.lat);
-            const lat2 = rad(b.lat);
-            const dLat = rad(b.lat - a.lat);
-            const dLon = rad(b.lon - a.lon);
+
+            const lat1 = radians(a.lat);
+            const lat2 = radians(b.lat);
+            const dLat = radians(b.lat - a.lat);
+            const dLon = radians(b.lon - a.lon);
 
             const value =
                 Math.sin(dLat / 2) ** 2 +
                 Math.cos(lat1) * Math.cos(lat2) *
                 Math.sin(dLon / 2) ** 2;
 
-            return radius * 2 *
-                Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+            const safeValue = Math.min(1, Math.max(0, value));
+
+            return radius * 2 * Math.atan2(
+                Math.sqrt(safeValue),
+                Math.sqrt(1 - safeValue)
+            );
         };
 
         const panel = document.createElement("div");
@@ -401,8 +421,6 @@
                     ? query
                     : `${query}, Australia`;
 
-            // Request several matches so an incorrect first result does not
-            // prevent the correct Australian location from being selected.
             const url =
                 "https://photon.komoot.io/api/?limit=10&q=" +
                 encodeURIComponent(searchQuery);
@@ -498,21 +516,27 @@
                 "Your starting point will be checked when you generate an itinerary.";
         });
 
-        const estimatedDistance = destination => {
+        function estimatedDistance(destination) {
             if (!startingCoordinates) return null;
 
-            const destinationName = String(destination || "").trim();
-            const coordinates = LOCATIONS[destinationName];
+            const coordinates =
+                LOCATION_LOOKUP.get(normalise(destination));
 
             if (!coordinates) return null;
 
-            return Math.round(
-                distanceBetween(
-                    startingCoordinates,
-                    { lat:coordinates[0], lon:coordinates[1] }
-                ) * 1.3
+            const straightLineDistance = distanceBetween(
+                startingCoordinates,
+                {
+                    lat: coordinates[0],
+                    lon: coordinates[1]
+                }
             );
-        };
+
+            if (!Number.isFinite(straightLineDistance)) return null;
+
+            // Straight-line distance is multiplied to approximate road distance.
+            return Math.round(straightLineDistance * 1.3);
+        }
 
         function shuffle(items) {
             const result = [...items];
@@ -525,7 +549,7 @@
             return result;
         }
 
-        function eligibleActivities() {
+        function getBaseEligibleActivities() {
             const advanceBookingPattern =
                 /\b(book(?:ing)?(?:\s+(?:ahead|in advance|required))?|pre[- ]?book|ticket(?:s|ed)?|reservation|show dates)\b/i;
 
@@ -555,34 +579,54 @@
                     return false;
                 }
 
-                if (distance.select.value !== "any") {
-                    const km = estimatedDistance(activity.destination);
-                    if (km === null || km > Number(distance.select.value)) {
-                        return false;
-                    }
-                }
-
                 return true;
             });
         }
 
+        function getDistanceEligibleActivities(activities) {
+            if (distance.select.value === "any") {
+                return activities.map(activity => ({
+                    activity,
+                    distance: null
+                }));
+            }
+
+            const maximumDistance = Number(distance.select.value);
+
+            return activities
+                .map(activity => ({
+                    activity,
+                    distance: estimatedDistance(activity.destination)
+                }))
+                .filter(item =>
+                    item.distance !== null &&
+                    item.distance <= maximumDistance
+                );
+        }
+
         function buildSuggestions() {
             const maximumHours = Number(duration.select.value);
+
             const minimumHours = maximumHours >= 8 ? 5.5 :
                 maximumHours >= 6 ? 4.5 :
                 maximumHours >= 4 ? 2.5 : 1;
 
+            const baseActivities = getBaseEligibleActivities();
+            const distanceEligible = getDistanceEligibleActivities(baseActivities);
+
             const groups = new Map();
 
-            eligibleActivities().forEach(activity => {
-                const destination = (activity.destination || "").trim();
+            distanceEligible.forEach(item => {
+                const activity = item.activity;
+                const destination = String(activity.destination || "").trim();
+
                 if (!destination) return;
 
                 if (!groups.has(destination)) {
                     groups.set(destination, []);
                 }
 
-                groups.get(destination).push(activity);
+                groups.get(destination).push(item);
             });
 
             const suggestions = [];
@@ -590,18 +634,19 @@
             groups.forEach((items, destination) => {
                 const candidates = shuffle(items).sort(
                     (a, b) =>
-                        Number(b.durationHours) - Number(a.durationHours)
+                        Number(b.activity.durationHours) -
+                        Number(a.activity.durationHours)
                 );
 
                 const selected = [];
                 let totalHours = 0;
 
-                for (const activity of candidates) {
-                    const hours = Number(activity.durationHours);
+                for (const item of candidates) {
+                    const hours = Number(item.activity.durationHours);
 
                     if (totalHours + hours > maximumHours) continue;
 
-                    selected.push(activity);
+                    selected.push(item);
                     totalHours += hours;
 
                     if (
@@ -617,14 +662,85 @@
 
                 suggestions.push({
                     destination,
-                    region: selected[0].region || "",
-                    activities: selected,
+                    region: selected[0].activity.region || "",
+                    activities: selected.map(item => item.activity),
                     totalHours,
-                    distance: estimatedDistance(destination)
+                    distance: estimatedDistance(destination),
+                    relaxed: false
                 });
             });
 
-            return shuffle(suggestions);
+            if (suggestions.length) {
+                return {
+                    suggestions: shuffle(suggestions),
+                    eligibleCount: distanceEligible.length,
+                    baseCount: baseActivities.length,
+                    relaxed: false
+                };
+            }
+
+            /*
+             * Distance-filter fallback:
+             * If there are nearby activities but not enough to meet the normal
+             * minimum-duration target, offer the best available local outing.
+             * The selected distance limit is still strictly respected.
+             */
+            if (distance.select.value !== "any" && distanceEligible.length) {
+                const relaxedSuggestions = [];
+
+                groups.forEach((items, destination) => {
+                    const candidates = shuffle(items).sort(
+                        (a, b) =>
+                            Number(b.activity.durationHours) -
+                            Number(a.activity.durationHours)
+                    );
+
+                    const selected = [];
+                    let totalHours = 0;
+
+                    for (const item of candidates) {
+                        const hours = Number(item.activity.durationHours);
+
+                        if (totalHours + hours > maximumHours) continue;
+
+                        selected.push(item);
+                        totalHours += hours;
+                    }
+
+                    if (!selected.length) return;
+
+                    relaxedSuggestions.push({
+                        destination,
+                        region: selected[0].activity.region || "",
+                        activities: selected.map(item => item.activity),
+                        totalHours,
+                        distance: estimatedDistance(destination),
+                        relaxed: true
+                    });
+                });
+
+                relaxedSuggestions.sort((a, b) => {
+                    if (a.distance !== b.distance) {
+                        return a.distance - b.distance;
+                    }
+
+                    return b.totalHours - a.totalHours;
+                });
+
+                return {
+                    suggestions: relaxedSuggestions,
+                    eligibleCount: distanceEligible.length,
+                    baseCount: baseActivities.length,
+                    relaxed: true
+                };
+            }
+
+            return {
+                suggestions: [],
+                eligibleCount: distanceEligible.length,
+                baseCount: baseActivities.length,
+                relaxed: false
+            };
         }
 
         function displaySuggestion(suggestion) {
@@ -638,10 +754,10 @@
 
             const formattedDate = new Date(`${dateInput.value}T12:00:00`)
                 .toLocaleDateString("en-AU", {
-                    weekday:"long",
-                    day:"numeric",
-                    month:"long",
-                    year:"numeric"
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
                 });
 
             const intro = document.createElement("p");
@@ -662,10 +778,20 @@
             const activityNames = suggestion.activities.map(item => item.name);
 
             overview.textContent =
-                `A lovely day out in ${suggestion.destination}, taking in ` +
+                `A lovely outing in ${suggestion.destination}, bringing together ` +
                 `${activityNames.join(", ")}. Allow around ` +
-                `${suggestion.totalHours.toFixed(1)} hours for the activities, ` +
-                `plus extra time for travelling, refreshments and breaks.`;
+                `${suggestion.totalHours.toFixed(1)} hours for these experiences, ` +
+                `with additional time for travelling, refreshments and breaks.`;
+
+            if (suggestion.relaxed) {
+                const relaxedNote = document.createElement("p");
+                relaxedNote.className = "generated-day-meta";
+                relaxedNote.textContent =
+                    "This is a shorter local option selected because it fits your distance limit. You can add more activities from Discover if you'd like to extend the day.";
+                card.append(heading, intro, overview, relaxedNote);
+            } else {
+                card.append(heading, intro, overview);
+            }
 
             const activityContainer = document.createElement("div");
             const selectedIds =
@@ -791,9 +917,6 @@
             updateSummary();
 
             card.append(
-                heading,
-                intro,
-                overview,
                 activityContainer,
                 summary,
                 note,
@@ -820,17 +943,25 @@
             try {
                 await resolveStartingLocation();
 
-                const suggestions = buildSuggestions();
+                const result = buildSuggestions();
 
-                if (!suggestions.length) {
+                if (!result.suggestions.length) {
                     const empty = document.createElement("p");
-                    empty.textContent =
-                        "No suitable itineraries match these preferences. Try increasing your distance, time or budget, or untick Pet-friendly options.";
+
+                    if (distance.select.value !== "any") {
+                        empty.textContent =
+                            `There are no eligible activities within ${distance.select.value} km of ${locationInput.value.trim()} with your current preferences. Try a larger distance, change your budget or time available, or untick Pet-friendly options.`;
+                    } else {
+                        empty.textContent =
+                            "No suitable itineraries match these preferences. Try increasing your available time or budget, or untick Pet-friendly options.";
+                    }
+
                     results.appendChild(empty);
                     return;
                 }
 
-                displaySuggestion(suggestions[0]);
+                displaySuggestion(result.suggestions[0]);
+
             } catch (error) {
                 message.textContent = error.message ||
                     "Unable to determine your starting location.";
@@ -843,5 +974,13 @@
         generateButton.addEventListener("click", generate);
     }
 
-    document.addEventListener("DOMContentLoaded", initialiseDayGenerator);
+    if (document.readyState === "loading") {
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialiseDayGenerator,
+            { once: true }
+        );
+    } else {
+        initialiseDayGenerator();
+    }
 })();
