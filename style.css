@@ -908,3 +908,157 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Holiday Packing Checklist */
+
+#holiday-packing > label select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--text);
+    font: inherit;
+}
+
+.packing-progress {
+    margin: 20px 0;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.packing-progress p {
+    margin: 0 0 10px;
+    font-weight: 600;
+}
+
+.packing-progress-track {
+    height: 15px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #dce3dc;
+}
+
+.packing-progress-bar {
+    width: 0;
+    height: 100%;
+    border-radius: 20px;
+    background: var(--forest-light);
+    transition: width .2s ease;
+}
+
+.packing-categories {
+    display: grid;
+    gap: 14px;
+    margin: 20px 0;
+}
+
+.packing-category {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--white);
+}
+
+.packing-category-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.packing-category-heading h3 {
+    margin: 0;
+}
+
+.packing-category-count {
+    color: var(--muted);
+    font-size: .9rem;
+    white-space: nowrap;
+}
+
+.packing-items {
+    display: grid;
+    gap: 8px;
+}
+
+.packing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.packing-item:last-child {
+    border-bottom: 0;
+}
+
+.packing-item-label {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.packing-item-label input {
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+    accent-color: var(--forest);
+}
+
+.packing-checked {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+.packing-remove {
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--forest);
+    cursor: pointer;
+}
+
+.packing-add-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.packing-add-form input {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+}
+
+.packing-add-form .add-activity-button {
+    grid-column: auto;
+}
+
+.packing-message {
+    color: var(--forest);
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    .packing-add-form {
+        grid-template-columns: 1fr;
+    }
+
+    .packing-add-form .add-activity-button {
+        grid-column: 1;
+    }
+}
