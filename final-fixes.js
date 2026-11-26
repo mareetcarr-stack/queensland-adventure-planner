@@ -10,7 +10,7 @@
  * 3. Personal adventure history
  *
  * No MutationObserver is used.
- * Existing saved data and dashboard content are preserved.
+ * No dashboard or saved adventure content is removed.
  */
 
 (() => {
@@ -55,11 +55,9 @@
 
         if (!form.elements.namedItem("estimatedCost")) {
             const hidden = document.createElement("input");
-
             hidden.type = "hidden";
             hidden.name = "estimatedCost";
             hidden.value = "";
-
             form.appendChild(hidden);
         }
 
@@ -73,11 +71,9 @@
             oldPet.remove();
 
             const hiddenPolicy = document.createElement("input");
-
             hiddenPolicy.type = "hidden";
             hiddenPolicy.name = "dogPolicy";
             hiddenPolicy.value = "restricted";
-
             form.appendChild(hiddenPolicy);
 
             const label = document.createElement("label");
@@ -124,30 +120,14 @@
         }
     }
 
-    function run() {
+    function initialise() {
         if (page !== "my-adventures") return;
 
         refineAddActivityForm();
 
-        /*
-         * Deliberately do not move or remove dashboard elements.
-         *
-         * home-dashboard.js inserts the Adventure Dashboard
-         * immediately after the welcome section.
-         *
-         * my-adventures.js appends the personal history
-         * after the Adventure Dashboard.
-         */
-    }
-
-    function initialise() {
-        if (page !== "my-adventures") return;
-
-        run();
-
         document.addEventListener(
             "adventureplanner:datachanged",
-            run
+            refineAddActivityForm
         );
     }
 
