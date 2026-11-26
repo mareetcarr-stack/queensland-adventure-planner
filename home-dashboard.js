@@ -3,7 +3,15 @@
 /*
  * Adventure Planner — Adventure Dashboard
  * Displayed on the My Adventures page.
- * No "Recently Completed" section.
+ *
+ * Includes:
+ * - Summary stats
+ * - Coming Up
+ * - Quick Access
+ * - Experiences I've Completed
+ * - Saved Day Itineraries
+ *
+ * Does not include "Recently Completed".
  */
 
 (() => {
@@ -40,12 +48,20 @@
         shortcuts.className = "dashboard-shortcuts";
 
         const completedSection = document.createElement("div");
-completedSection.className = "dashboard-completed-section";
+        completedSection.className = "dashboard-completed-section";
 
-const itinerariesSection = document.createElement("div");
-itinerariesSection.className = "dashboard-itineraries-section";
+        const itinerariesSection = document.createElement("div");
+        itinerariesSection.className = "dashboard-itineraries-section";
 
-        section.append(heading, welcome, statistics, upcoming, shortcuts, completedSection, itinerariesSection);
+        section.append(
+            heading,
+            welcome,
+            statistics,
+            upcoming,
+            shortcuts,
+            completedSection,
+            itinerariesSection
+        );
 
         const main = document.querySelector("main");
         const welcomeSection = main?.querySelector(".welcome");
@@ -65,18 +81,35 @@ itinerariesSection.className = "dashboard-itineraries-section";
         };
 
         const parseDate = value => {
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null;
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) {
+                return null;
+            }
+
             const date = new Date(`${value}T12:00:00`);
             return Number.isNaN(date.getTime()) ? null : date;
         };
 
         const formatDate = value => {
             const date = parseDate(value);
+
             if (!date) return "Date not set";
+
             return date.toLocaleDateString("en-AU", {
                 weekday: "short",
                 day: "numeric",
                 month: "short",
+                year: "numeric"
+            });
+        };
+
+        const formatLongDate = value => {
+            if (!value) return "Date not recorded";
+            const date = new Date(`${value}T12:00:00`);
+            if (Number.isNaN(date.getTime())) return "Date not recorded";
+            return date.toLocaleDateString("en-AU", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
                 year: "numeric"
             });
         };
@@ -87,6 +120,13 @@ itinerariesSection.className = "dashboard-itineraries-section";
             if (text !== undefined) node.textContent = text;
             return node;
         };
+
+        function makeButton(label, action) {
+            const button = makeElement("button", "reset-filters", label);
+            button.type = "button";
+            button.addEventListener("click", action);
+            return button;
+        }
 
         function createStat(label, value, detail) {
             const card = makeElement("article", "dashboard-stat-card");
@@ -189,6 +229,124 @@ itinerariesSection.className = "dashboard-itineraries-section";
             shortcuts.appendChild(container);
         }
 
+        function renderCompleted() {
+            completedSection.replaceChildren();
+            completedSection.appendChild(
+                makeElement("h3", "", "✓ Experiences I've Completed")
+            );
+
+            const activities = planner.getActivities();
+            const completedIds = [...new Set(planner.data.completedActivities || [])];
+            const completed = completedIds
+                .map(id => activities.find(activity => activity.id === id))
+                .filter(Boolean);
+
+            if (!completed.length) {
+                completedSection.appendChild(
+                    makeElement(
+                        "p",
+                        "dashboard-empty",
+                        "Your completed experiences will appear here."
+                    )
+                );
+                return;
+            }
+
+            completed.forEach(activity => {
+                const card = makeElement("article", "adventure-history-card");
+                card.append(
+                    makeElement("h4", "", activity.name),
+                    makeElement(
+                        "p",
+                        "",
+                        [activity.destination, activity.region]
+                            .filter(Boolean)
+                            .join(" · ")
+                    ),
+                    makeElement(
+                        "p",
+                        "",
+                        `${activity.durationHours || 0} hours · ` +
+                            (activity.estimatedCost == null
+                                ? "Cost unconfirmed"
+                                : activity.estimatedCost === 0
+                                  ? "Free"
+                                  : `Estimated $${activity.estimatedCost}`)
+                    ),
+                    makeButton("Mark as not completed", () => {
+                        planner.toggleCompleted(activity.id);
+                        document.dispatchEvent(
+                            new CustomEvent("adventureplanner:datachanged")
+                        );
+                    })
+                );
+                completedSection.appendChild(card);
+            });
+        }
+
+        function renderSavedItineraries() {
+            itinerariesSection.replaceChildren();
+            itinerariesSection.appendChild(
+                makeElement("h3", "", "🗓️ Saved Day Itineraries")
+            );
+
+            const activities = planner.getActivities();
+            const itineraries = [...(planner.data.savedItineraries || [])].sort(
+                (a, b) => (b.date || "").localeCompare(a.date || "")
+            );
+
+            if (!itineraries.length) {
+                itinerariesSection.appendChild(
+                    makeElement(
+                        "p",
+                        "dashboard-empty",
+                        "Your saved day trips will appear here."
+                    )
+                );
+                return;
+            }
+
+            itineraries.forEach(itinerary => {
+                const card = makeElement("article", "adventure-history-card");
+                card.id = `saved-itinerary-${itinerary.id}`;
+
+                card.appendChild(
+                    makeElement("h4", "", formatLongDate(itinerary.date))
+                );
+
+                const list = document.createElement("ul");
+                (itinerary.activityIds || []).forEach(id => {
+                    const activity = activities.find(item => item.id === id);
+                    if (activity) {
+                        list.appendChild(
+                            makeElement(
+                                "li",
+                                "",
+                                `${activity.name} — ${
+                                    activity.destination || activity.region || ""
+                                }`
+                            )
+                        );
+                    }
+                });
+                card.appendChild(list);
+
+                const actions = makeElement("div", "adventure-history-actions");
+                actions.appendChild(
+                    makeButton("Delete itinerary", () => {
+                        if (!window.confirm("Delete this saved itinerary?")) return;
+                        if (planner.deleteItinerary(itinerary.id)) {
+                            document.dispatchEvent(
+                                new CustomEvent("adventureplanner:datachanged")
+                            );
+                        }
+                    })
+                );
+                card.appendChild(actions);
+                itinerariesSection.appendChild(card);
+            });
+        }
+
         function render() {
             const activities = planner.getActivities();
             const completed = planner.data.completedActivities || [];
@@ -201,8 +359,16 @@ itinerariesSection.className = "dashboard-itineraries-section";
                 activities.filter(item => completed.includes(item.id)).length;
 
             statistics.replaceChildren(
-                createStat("Experiences", activities.length, "In your discovery library"),
-                createStat("Completed", completed.length, "Adventures experienced"),
+                createStat(
+                    "Experiences",
+                    activities.length,
+                    "In your discovery library"
+                ),
+                createStat(
+                    "Completed",
+                    completed.length,
+                    "Adventures experienced"
+                ),
                 createStat(
                     "Still to explore",
                     Math.max(0, remaining),
@@ -213,16 +379,28 @@ itinerariesSection.className = "dashboard-itineraries-section";
                     savedDays.length + holidays.length,
                     `${savedDays.length} day trips · ${holidays.length} holidays`
                 ),
-                createStat("Shortlisted", shortlist.length, "Experiences saved for later")
+                createStat(
+                    "Shortlisted",
+                    shortlist.length,
+                    "Experiences saved for later"
+                )
             );
 
             renderUpcoming();
             renderShortcuts();
+            renderCompleted();
+            renderSavedItineraries();
         }
 
         window.addEventListener("adventureplanner:datachanged", render);
         window.addEventListener("focus", render);
         window.addEventListener("pageshow", render);
+
+        document.addEventListener("click", event => {
+            if (event.target.closest("button")) {
+                window.setTimeout(render, 100);
+            }
+        });
 
         render();
         console.log("Adventure Dashboard initialised.");
@@ -231,15 +409,23 @@ itinerariesSection.className = "dashboard-itineraries-section";
 
     function tryInit(attemptsLeft) {
         if (initialiseDashboard()) return;
+
         if (attemptsLeft <= 0) {
-            console.error("Adventure Dashboard could not start — AdventurePlanner missing.");
+            console.error(
+                "Adventure Dashboard could not start — AdventurePlanner missing."
+            );
             return;
         }
+
         window.setTimeout(() => tryInit(attemptsLeft - 1), 50);
     }
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => tryInit(20), { once: true });
+        document.addEventListener(
+            "DOMContentLoaded",
+            () => tryInit(20),
+            { once: true }
+        );
     } else {
         tryInit(20);
     }
