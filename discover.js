@@ -3,12 +3,14 @@
 
 /*
  * Discover Adventures
- * Search, filter and browse the full experience collection.
+ * Displays one experience at a time to keep the page responsive.
  */
 
 (() => {
     function initialiseDiscover() {
-        if (typeof AdventurePlanner === "undefined") return;
+        if (!window.AdventurePlanner) return;
+
+        const planner = window.AdventurePlanner;
 
         const feature = [...document.querySelectorAll("main > .feature")]
             .find(section =>
@@ -20,10 +22,9 @@
         feature.querySelector(".status")?.remove();
 
         const intro = feature.querySelector("p");
-
         if (intro) {
             intro.textContent =
-                "Search the full collection of experiences, discover hidden gems and find something different to do. Completed experiences are automatically excluded.";
+                "Find an experience that catches your eye. Browse one idea at a time and discover somewhere new.";
         }
 
         const panel = document.createElement("div");
@@ -34,7 +35,7 @@
         search.type = "search";
         search.id = "discover-search";
         search.className = "search-input";
-        search.placeholder = "Search activities, destinations or ideas...";
+        search.placeholder = "Search activities or destinations...";
         search.setAttribute("aria-label", "Search adventures");
 
         const controls = document.createElement("div");
@@ -63,7 +64,7 @@
             return select;
         }
 
-        const activities = AdventurePlanner.getActivities();
+        const activities = planner.getActivities();
 
         const regions = [...new Set(
             activities.map(activity => activity.region).filter(Boolean)
@@ -93,75 +94,57 @@
             { value: "exclude-restricted", label: "Exclude places that prohibit dogs" }
         ]);
 
-        const actions = document.createElement("div");
-        actions.className = "discover-actions";
-
-        const surprise = document.createElement("button");
-        surprise.type = "button";
-        surprise.className = "add-activity-button";
-        surprise.textContent = "Surprise me with an adventure";
-
-        const showAll = document.createElement("button");
-        showAll.type = "button";
-        showAll.className = "reset-filters";
-        showAll.textContent = "Show matching ideas";
-
-        actions.append(surprise, showAll);
-
         const results = document.createElement("div");
         results.id = "discover-results";
         results.className = "discover-results";
+        results.setAttribute("aria-live", "polite");
 
-        const moreButton = document.createElement("button");
-        moreButton.type = "button";
-        moreButton.className = "reset-filters";
-        moreButton.textContent = "Show 12 more experiences";
-        moreButton.hidden = true;
+        const actions = document.createElement("div");
+        actions.className = "discover-actions";
+
+        const nextButton = document.createElement("button");
+        nextButton.type = "button";
+        nextButton.className = "add-activity-button";
+        nextButton.textContent = "Show another idea";
 
         const count = document.createElement("p");
-        count.className = "discover-meta";
-        count.setAttribute("aria-live", "polite");
+        count.className = "discover-count";
 
-        panel.append(
-            search,
-            controls,
-            actions,
-            results,
-            count,
-            moreButton
-        );
+        actions.appendChild(nextButton);
 
+        panel.append(search, controls, actions, results, count);
         feature.appendChild(panel);
 
-        const PAGE_SIZE = 12;
-        let visibleCount = PAGE_SIZE;
-        let displayedActivities = [];
+        let currentActivityId = null;
+        let matchingActivities = [];
 
         function getMatches() {
             const term = search.value.trim().toLowerCase();
 
-            return AdventurePlanner.getActivities().filter(activity => {
-                if (AdventurePlanner.isCompleted(activity.id)) return false;
+            return planner.getActivities().filter(activity => {
+                if (planner.isCompleted(activity.id)) return false;
 
-                if (
-                    region.value !== "all" &&
-                    activity.region !== region.value
-                ) return false;
+                if (region.value !== "all" && activity.region !== region.value) {
+                    return false;
+                }
 
                 if (
                     category.value !== "all" &&
                     !(activity.category || []).includes(category.value)
-                ) return false;
+                ) {
+                    return false;
+                }
 
-                if (
-                    dog.value === "friendly" &&
-                    activity.dogPolicy !== "friendly"
-                ) return false;
+                if (dog.value === "friendly" && activity.dogPolicy !== "friendly") {
+                    return false;
+                }
 
                 if (
                     dog.value === "exclude-restricted" &&
                     activity.dogPolicy === "restricted"
-                ) return false;
+                ) {
+                    return false;
+                }
 
                 if (term) {
                     const searchable = [
@@ -183,22 +166,24 @@
             const card = document.createElement("article");
             card.className = "discover-card";
 
+            const eyebrow = document.createElement("span");
+            eyebrow.className = "discover-card-eyebrow";
+            eyebrow.textContent = "A place to discover";
+
             const heading = document.createElement("h4");
             heading.textContent = activity.name;
 
             const location = document.createElement("p");
-            location.className = "discover-meta";
+            location.className = "discover-location";
             location.textContent = [
                 activity.destination,
                 activity.region
             ].filter(Boolean).join(" · ");
 
             const description = document.createElement("p");
+            description.className = "discover-description";
             description.textContent =
                 activity.description || "Explore this experience.";
-
-            const details = document.createElement("p");
-            details.className = "discover-meta";
 
             const cost = activity.cost === "free"
                 ? "Free"
@@ -212,42 +197,34 @@
                     ? "Dogs not permitted"
                     : "Dog access to verify";
 
-            const categoriesLabel = (activity.category || [])
-                .map(value => value.replaceAll("-", " "))
-                .join(", ");
+            const details = document.createElement("div");
+            details.className = "discover-details";
 
-            details.textContent =
-                (activity.durationHours
+            [
+                activity.durationHours
                     ? activity.durationHours + " hours"
-                    : "Duration to check") +
-                " · " + cost +
-                " · " + dogLabel +
-                (categoriesLabel ? " · " + categoriesLabel : "");
+                    : "Duration to check",
+                cost,
+                dogLabel
+            ].forEach(value => {
+                const item = document.createElement("span");
+                item.textContent = value;
+                details.appendChild(item);
+            });
 
             const complete = document.createElement("button");
             complete.type = "button";
             complete.className = "reset-filters";
-            complete.textContent = "Mark experience as completed";
+            complete.textContent = "Mark as completed";
 
             complete.addEventListener("click", () => {
-                AdventurePlanner.toggleCompleted(activity.id);
-
-                render(false);
-
-                if (typeof renderActivityBrowser === "function") {
-                    renderActivityBrowser();
-                }
-
-                if (typeof renderDayPlanner === "function") {
-                    renderDayPlanner();
-                }
-
-                if (typeof renderMyActivities === "function") {
-                    renderMyActivities();
-                }
+                planner.toggleCompleted(activity.id);
+                currentActivityId = null;
+                displayNextIdea();
             });
 
             card.append(
+                eyebrow,
                 heading,
                 location,
                 description,
@@ -258,84 +235,59 @@
             return card;
         }
 
-        function render(randomise = false) {
+        function displayNextIdea() {
+            matchingActivities = getMatches();
             results.replaceChildren();
 
-            let matches = getMatches();
-
-            if (randomise) {
-                matches = matches
-                    .map(activity => ({
-                        activity,
-                        sort: Math.random()
-                    }))
-                    .sort((a, b) => a.sort - b.sort)
-                    .map(item => item.activity);
-
-                visibleCount = Math.min(3, matches.length);
-            }
-
-            displayedActivities = matches;
-
-            if (matches.length === 0) {
+            if (!matchingActivities.length) {
                 const empty = document.createElement("p");
+                empty.className = "discover-empty";
                 empty.textContent =
-                    "No uncompleted experiences match these filters. Try another search or area, or add more activities to your collection.";
+                    "No experiences match these filters. Try a different area, category or search.";
 
                 results.appendChild(empty);
-                count.textContent = "";
-                moreButton.hidden = true;
+                count.textContent = "No matching experiences";
+                nextButton.disabled = true;
+                currentActivityId = null;
                 return;
             }
 
-            const heading = document.createElement("h4");
-            heading.textContent = randomise
-                ? "Your surprise suggestions"
-                : "Ideas to explore";
+            nextButton.disabled = false;
 
-            results.appendChild(heading);
+            let choices = matchingActivities;
 
-            matches.slice(0, visibleCount).forEach(activity => {
-                results.appendChild(createCard(activity));
-            });
+            if (currentActivityId && choices.length > 1) {
+                choices = choices.filter(
+                    activity => activity.id !== currentActivityId
+                );
+            }
+
+            const selected = choices[
+                Math.floor(Math.random() * choices.length)
+            ];
+
+            currentActivityId = selected.id;
+            results.appendChild(createCard(selected));
 
             count.textContent =
-                `Showing ${Math.min(visibleCount, matches.length)} of ` +
-                `${matches.length} uncompleted experiences.`;
-
-            moreButton.hidden = visibleCount >= matches.length;
-            moreButton.textContent =
-                `Show ${Math.min(PAGE_SIZE, matches.length - visibleCount)} more experiences`;
+                `${matchingActivities.length} matching experiences available`;
         }
 
-        surprise.addEventListener("click", () => {
-            visibleCount = 3;
-            render(true);
-        });
-
-        showAll.addEventListener("click", () => {
-            visibleCount = PAGE_SIZE;
-            render(false);
-        });
-
-        moreButton.addEventListener("click", () => {
-            visibleCount += PAGE_SIZE;
-            render(false);
-        });
+        nextButton.addEventListener("click", displayNextIdea);
 
         search.addEventListener("input", () => {
-            visibleCount = PAGE_SIZE;
-            render(false);
+            currentActivityId = null;
+            displayNextIdea();
         });
 
         [region, category, dog].forEach(select => {
             select.addEventListener("change", () => {
-                visibleCount = PAGE_SIZE;
-                render(false);
+                currentActivityId = null;
+                displayNextIdea();
             });
         });
 
-        render(true);
+        displayNextIdea();
     }
 
     document.addEventListener("DOMContentLoaded", initialiseDiscover);
