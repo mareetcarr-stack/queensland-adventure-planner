@@ -855,3 +855,78 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+
+
+/* Consistent warm beige surfaces across search, filters and activity forms */
+
+:root {
+    --search-beige: #F2EBDD;
+    --search-border: #D9CEBD;
+}
+
+/* Search and filter panels */
+.discover-controls,
+.day-generator-controls,
+.activity-filters,
+.map-view-controls {
+    padding: 18px;
+    border-radius: 12px;
+    background: var(--search-beige);
+}
+
+/* Form panels */
+#add-activity .activity-form,
+.activity-form {
+    background: var(--search-beige);
+}
+
+/* Individual form fields remain light for readability */
+#add-activity .activity-form input,
+#add-activity .activity-form select,
+#add-activity .activity-form textarea,
+.discover-controls select,
+.day-generator-controls select,
+.map-view-controls select {
+    background: #FFFEFC;
+    border-color: var(--search-border);
+}
+
+/* Pet-friendly checkbox */
+#add-activity .pet-checkbox-line {
+    background: #FFFEFC;
+    border-color: var(--search-border);
+}
+
+/* Keep the Discover shortlist actions clearly differentiated */
+#discover-results .discover-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: auto;
+    padding-top: 18px;
+}
+
+#discover-results .discover-card-actions button {
+    width: 100%;
+    min-height: 44px;
+}
+
+#discover-results .discover-shortlist-button {
+    background: #F2EBDD;
+    color: #51483D;
+}
+
+#discover-results .discover-shortlist-button.is-shortlisted {
+    background: #DCE8E3;
+    color: #40554B;
+}
+
+@media (max-width: 650px) {
+    .discover-controls,
+    .day-generator-controls,
+    .activity-filters,
+    .map-view-controls {
+        grid-template-columns: 1fr;
+    }
+}
