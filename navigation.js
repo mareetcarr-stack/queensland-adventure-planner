@@ -2,7 +2,7 @@
 "use strict";
 
 /*
- * Adventure Planner — dedicated page navigation
+ * Adventure Planner — main navigation
  */
 
 (() => {
@@ -13,15 +13,12 @@
             { id: "home", label: "Home", url: "index.html" },
             { id: "discover", label: "Discover", url: "discover.html" },
             { id: "plan-day", label: "Plan a Day", url: "plan-day.html" },
-            { id: "holidays", label: "Holidays", url: "holidays.html" },
             { id: "my-adventures", label: "My Adventures", url: "my-adventures.html" },
-            { id: "shortlist", label: "Shortlist", url: "shortlist.html" },
-            { id: "map", label: "Map", url: "map.html" }
+            { id: "shortlist", label: "Shortlist", url: "shortlist.html" }
         ];
 
         const currentPage = document.body.dataset.page;
         const navigation = document.createElement("nav");
-
         navigation.id = "adventure-navigation";
         navigation.setAttribute("aria-label", "Main navigation");
 
@@ -44,20 +41,16 @@
         navigation.appendChild(links);
 
         const header = document.querySelector("header");
-
-        if (header) {
-            header.insertAdjacentElement("afterend", navigation);
-        }
+        if (header) header.insertAdjacentElement("afterend", navigation);
 
         const style = document.createElement("style");
-
         style.textContent = `
             #adventure-navigation {
                 position: sticky;
                 top: 0;
                 z-index: 1000;
                 width: 100%;
-                background: rgba(247, 245, 241, .96);
+                background: rgba(247, 245, 241, .97);
                 border-bottom: 1px solid var(--border);
                 backdrop-filter: blur(12px);
             }
@@ -67,7 +60,7 @@
                 justify-content: center;
                 align-items: center;
                 flex-wrap: wrap;
-                gap: 5px;
+                gap: 7px;
                 width: min(100% - 28px, 1100px);
                 margin: 0 auto;
                 padding: 10px 0;
@@ -77,15 +70,14 @@
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                min-height: 38px;
-                padding: 8px 14px;
+                min-height: 40px;
+                padding: 8px 16px;
                 border-radius: 30px;
                 color: var(--ink);
                 text-decoration: none;
-                font-size: .88rem;
+                font-size: .9rem;
                 font-weight: 600;
                 white-space: nowrap;
-                transition: background .2s ease, color .2s ease;
             }
 
             .adventure-navigation-links a:hover {
@@ -93,7 +85,7 @@
             }
 
             .adventure-navigation-links a.active {
-                background: var(--terracotta);
+                background: var(--sage-dark);
                 color: white;
             }
 
@@ -102,7 +94,6 @@
                     justify-content: flex-start;
                     flex-wrap: nowrap;
                     overflow-x: auto;
-                    padding: 9px 0;
                     scrollbar-width: none;
                 }
 
