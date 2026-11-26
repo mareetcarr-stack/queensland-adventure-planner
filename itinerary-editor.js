@@ -118,7 +118,12 @@
             button.type = "button";
             button.className = className;
             button.textContent = text;
-            button.addEventListener("click", action);
+
+            button.addEventListener("click", event => {
+                event.stopPropagation();
+                action();
+            });
+
             return button;
         }
 
@@ -127,6 +132,20 @@
 
             const editor = document.createElement("div");
             editor.className = "itinerary-editor";
+
+            // Prevent the dashboard's global click/change listeners
+            // from rebuilding the card while the editor is in use.
+            editor.addEventListener("click", event => {
+                event.stopPropagation();
+            });
+
+            editor.addEventListener("change", event => {
+                event.stopPropagation();
+            });
+
+            editor.addEventListener("input", event => {
+                event.stopPropagation();
+            });
 
             const dateLabel = document.createElement("label");
             dateLabel.textContent = "Itinerary date";
@@ -221,8 +240,7 @@
                 "add-activity-button",
                 () => {
                     if (!dateInput.value) {
-                        message.textContent =
-                            "Please choose a date.";
+                        message.textContent = "Please choose a date.";
                         return;
                     }
 
@@ -254,8 +272,6 @@
                             "Unable to save changes. Check browser storage.";
                         return;
                     }
-
-                    message.textContent = "Itinerary updated.";
 
                     editor.remove();
 
@@ -313,31 +329,22 @@
 
             if (!itineraryGroup) return;
 
-            const itineraries = planner.data.savedItineraries || [];
+            const itineraries = [
+                ...(planner.data.savedItineraries || [])
+            ].sort((a, b) =>
+                (b.date || "").localeCompare(a.date || "")
+            );
 
             const cards = [
-                ...itineraryGroup.querySelectorAll(".adventure-history-card")
+                ...itineraryGroup.querySelectorAll(
+                    ".adventure-history-card"
+                )
             ];
 
             cards.forEach((card, index) => {
                 if (card.querySelector(".itinerary-edit-button")) return;
 
-                const heading = card.querySelector("h4");
-                if (!heading) return;
-
-                const itinerary = itineraries.find(item => {
-                    const formatted = new Date(
-                        `${item.date}T12:00:00`
-                    ).toLocaleDateString("en-AU", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric"
-                    });
-
-                    return formatted === heading.textContent;
-                });
-
+                const itinerary = itineraries[index];
                 if (!itinerary) return;
 
                 const edit = createButton(
