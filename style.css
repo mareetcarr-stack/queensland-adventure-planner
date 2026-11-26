@@ -1062,3 +1062,112 @@ footer {
         grid-column: 1;
     }
 }
+
+
+/* Holiday Booking and Notes Manager */
+
+#holiday-bookings > label select,
+#holiday-bookings > textarea {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    color: var(--text);
+    font: inherit;
+}
+
+.booking-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 20px 0;
+    padding: 18px;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.booking-form > label:nth-last-of-type(1),
+.booking-form > button,
+.booking-form > p {
+    grid-column: 1 / -1;
+}
+
+.booking-form input,
+.booking-form select,
+.booking-form textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    font: inherit;
+}
+
+.booking-form textarea {
+    min-height: 100px;
+}
+
+.booking-message {
+    margin: 0;
+    color: var(--forest);
+    font-weight: 600;
+}
+
+.holiday-booking-list {
+    display: grid;
+    gap: 14px;
+    margin: 18px 0 28px;
+}
+
+.holiday-booking-card {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--white);
+}
+
+.holiday-booking-card h4 {
+    margin: 0 0 8px;
+    color: var(--forest);
+    font-size: 1.1rem;
+}
+
+.booking-category {
+    display: inline-block;
+    margin-bottom: 10px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--forest);
+    font-size: .85rem;
+}
+
+.booking-details p {
+    margin: 6px 0;
+    overflow-wrap: anywhere;
+}
+
+.booking-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    margin-top: 14px;
+}
+
+#holiday-bookings > textarea {
+    display: block;
+    min-height: 130px;
+    margin: 12px 0;
+}
+
+@media (max-width: 600px) {
+    .booking-form {
+        grid-template-columns: 1fr;
+    }
+
+    .booking-form > * {
+        grid-column: 1;
+    }
+}
