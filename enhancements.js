@@ -234,8 +234,7 @@
         const dashboard = document.getElementById("my-adventures-dashboard");
         if (!dashboard) return;
 
-        const main = document.querySelector("main");
-        if (main && dashboard !== main.firstElementChild) main.insertBefore(dashboard, main.firstElementChild);
+        // Order is handled by page-refinements.js (welcome → dashboard → history)
 
         const holidayGroup = [...dashboard.querySelectorAll(".adventure-dashboard-group")]
             .find(group => /Holiday Plans/.test(group.querySelector("h3")?.textContent || ""));
