@@ -9,7 +9,9 @@
  * - Approximate distance filter from Clontarf
  * - Budget, duration and dog preferences
  * - Excludes completed activities
- * - Selectable activities and saved itineraries
+ * - Selectable activities
+ * - Choose the planned outing date
+ * - Save itineraries against the selected date
  *
  * Distance estimates use straight-line distance multiplied by 1.3.
  * They are not live road distances or navigation directions.
@@ -24,7 +26,7 @@
                 section.querySelector("h3")?.textContent.includes("Plan My Day")
             );
 
-        if (!feature) return;
+        if (!feature || feature.querySelector(".day-generator")) return;
 
         feature.querySelector(".status")?.remove();
 
@@ -32,7 +34,7 @@
 
         if (introduction) {
             introduction.textContent =
-                "Build a suggested day out based on distance from home, available time, budget and dog preferences.";
+                "Build a suggested day out based on distance from home, available time, budget, dog preferences and your chosen date.";
         }
 
         const HOME = { lat: -27.253, lon: 153.083 };
@@ -68,6 +70,7 @@
             "Byron Bay": [-28.647, 153.602],
             "Lennox Head": [-28.791, 153.594],
             "Brunswick Heads": [-28.541, 153.545],
+            "North Tumbulgum": [-28.304, 153.465],
             "Tintenbar": [-28.797, 153.513],
             "Bangalow": [-28.686, 153.522],
             "Montecollum": [-28.574, 153.459],
@@ -75,12 +78,26 @@
             "Wivenhoe Dam": [-27.395, 152.608],
             "Mount Mee": [-27.080, 152.750],
             "Dayboro": [-27.196, 152.825],
+            "Samford": [-27.372, 152.886],
             "Hamilton": [-27.439, 153.066],
             "Biggera Waters": [-27.927, 153.400],
             "Beerwah": [-26.858, 152.961],
             "Oxenford": [-27.891, 153.313],
-            "Margate": [-27.243, 153.106]
+            "Margate": [-27.243, 153.106],
+            "Nudgee Beach": [-27.347, 153.105],
+            "Coolum Beach": [-26.528, 153.091],
+            "Peregian Beach": [-26.480, 153.096],
+            "Point Danger": [-28.166, 153.548],
+            "Currumbin Valley": [-28.181, 153.420],
+            "Tallebudgera Creek": [-28.112, 153.456]
         };
+
+        function localDateString(date = new Date()) {
+            const local = new Date(
+                date.getTime() - date.getTimezoneOffset() * 60000
+            );
+            return local.toISOString().slice(0, 10);
+        }
 
         function distanceBetween(a, b) {
             const radians = degrees => degrees * Math.PI / 180;
@@ -129,7 +146,8 @@
 
             .day-generator-controls .filter-field { min-width: 0; }
 
-            .day-generator-controls select {
+            .day-generator-controls select,
+            .day-generator-controls input {
                 width: 100%;
                 min-height: 44px;
                 padding: 10px;
@@ -248,6 +266,21 @@
             return { label, select };
         }
 
+        const dateLabel = document.createElement("label");
+        dateLabel.className = "filter-field";
+
+        const dateCaption = document.createElement("span");
+        dateCaption.textContent = "Date of your outing";
+
+        const dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.id = "generator-date";
+        dateInput.value = localDateString();
+        dateInput.min = localDateString();
+        dateInput.required = true;
+
+        dateLabel.append(dateCaption, dateInput);
+
         const distanceControl = createSelect(
             "Maximum estimated drive distance from Clontarf",
             "generator-distance",
@@ -299,6 +332,7 @@
         controls.className = "day-generator-controls";
 
         controls.append(
+            dateLabel,
             distanceControl.label,
             durationControl.label,
             budgetControl.label,
@@ -441,11 +475,23 @@
 
             const intro = document.createElement("p");
             intro.className = "generated-day-intro";
+
+            const formattedDate = new Date(
+                `${dateInput.value}T12:00:00`
+            ).toLocaleDateString("en-AU", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
+
             intro.textContent =
+                `${formattedDate} · ` +
                 `${suggestion.region ? suggestion.region + " · " : ""}` +
                 `Approximately ${suggestion.distance} km from Clontarf (estimated one-way road distance).`;
 
             const activityContainer = document.createElement("div");
+
             const selectedIds = new Set(
                 suggestion.activities.map(activity => activity.id)
             );
@@ -546,6 +592,13 @@
             saveButton.textContent = "Save this day itinerary";
 
             saveButton.addEventListener("click", () => {
+                if (!dateInput.value || dateInput.value < localDateString()) {
+                    message.textContent =
+                        "Choose today or a future date for your outing.";
+                    dateInput.focus();
+                    return;
+                }
+
                 const ids = suggestion.activities
                     .filter(activity => selectedIds.has(activity.id))
                     .map(activity => activity.id);
@@ -556,13 +609,8 @@
                     return;
                 }
 
-                const now = new Date();
-                const localDate = new Date(
-                    now.getTime() - now.getTimezoneOffset() * 60000
-                ).toISOString().slice(0, 10);
-
                 const saved = AdventurePlanner.saveItinerary({
-                    date: localDate,
+                    date: dateInput.value,
                     activityIds: ids
                 });
 
@@ -573,7 +621,7 @@
                 }
 
                 message.textContent =
-                    "Your suggested day has been saved in My Saved Itineraries.";
+                    `Your itinerary for ${formattedDate} has been saved.`;
 
                 saveButton.disabled = true;
                 saveButton.textContent = "Itinerary saved";
@@ -600,6 +648,13 @@
         function generate() {
             message.textContent = "";
 
+            if (!dateInput.value || dateInput.value < localDateString()) {
+                message.textContent =
+                    "Choose today or a future date before generating an outing.";
+                dateInput.focus();
+                return;
+            }
+
             const suggestions = buildSuggestions();
 
             if (!suggestions.length) {
@@ -620,6 +675,10 @@
 
         generateButton.addEventListener("click", generate);
         regenerateButton.addEventListener("click", generate);
+
+        dateInput.addEventListener("change", () => {
+            if (results.children.length) generate();
+        });
     }
 
     document.addEventListener("DOMContentLoaded", initialiseDayGenerator);
