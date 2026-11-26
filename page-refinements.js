@@ -22,25 +22,31 @@
     if (!main) return;
 
     const welcome = main.querySelector(".welcome");
+    const adventureDashboard = document.getElementById("home-dashboard");
     const history = document.getElementById("my-adventures-dashboard");
-    const dashboard = document.getElementById("home-dashboard");
 
+    // 1. Welcome at the very top
     if (welcome) {
         main.insertBefore(welcome, main.firstChild);
     }
 
-    // Coloured cards dashboard directly under the welcome heading
-    if (welcome && history) {
-        welcome.insertAdjacentElement("afterend", history);
-    } else if (history) {
-        main.insertBefore(history, main.firstChild);
+    // 2. "Your Adventure Dashboard" directly under the welcome
+    if (adventureDashboard) {
+        if (welcome) {
+            welcome.insertAdjacentElement("afterend", adventureDashboard);
+        } else {
+            main.insertBefore(adventureDashboard, main.firstChild);
+        }
     }
 
-    // Optional home dashboard after the coloured cards
-    if (history && dashboard) {
-        history.insertAdjacentElement("afterend", dashboard);
-    } else if (welcome && dashboard) {
-        welcome.insertAdjacentElement("afterend", dashboard);
+    // 3. Personal history (coloured cards / experiences / itineraries) under that
+    if (history) {
+        const anchor = adventureDashboard || welcome;
+        if (anchor) {
+            anchor.insertAdjacentElement("afterend", history);
+        } else {
+            main.insertBefore(history, main.firstChild);
+        }
     }
 }
 
@@ -60,8 +66,10 @@
     }
 
     function start() {
+    window.requestAnimationFrame(() => {
         window.requestAnimationFrame(initialise);
-    }
+    });
+}
 
     if (document.readyState === "loading") {
         document.addEventListener(
