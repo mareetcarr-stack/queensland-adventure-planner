@@ -3,7 +3,7 @@
 
 /*
  * Discover Adventures
- * Recommends uncompleted experiences from the activity database.
+ * Search, filter and browse the full experience collection.
  */
 
 (() => {
@@ -15,7 +15,7 @@
                 section.querySelector("h3")?.textContent.includes("Discover Adventures")
             );
 
-        if (!feature) return;
+        if (!feature || feature.querySelector("#discover-panel")) return;
 
         feature.querySelector(".status")?.remove();
 
@@ -23,12 +23,19 @@
 
         if (intro) {
             intro.textContent =
-                "Find something different to do. Completed experiences are excluded, but you can discover new activities in places you've visited before.";
+                "Search the full collection of experiences, discover hidden gems and find something different to do. Completed experiences are automatically excluded.";
         }
 
         const panel = document.createElement("div");
         panel.id = "discover-panel";
         panel.className = "discover-panel";
+
+        const search = document.createElement("input");
+        search.type = "search";
+        search.id = "discover-search";
+        search.className = "search-input";
+        search.placeholder = "Search activities, destinations or ideas...";
+        search.setAttribute("aria-label", "Search adventures");
 
         const controls = document.createElement("div");
         controls.className = "discover-controls";
@@ -105,10 +112,34 @@
         results.id = "discover-results";
         results.className = "discover-results";
 
-        panel.append(controls, actions, results);
+        const moreButton = document.createElement("button");
+        moreButton.type = "button";
+        moreButton.className = "reset-filters";
+        moreButton.textContent = "Show 12 more experiences";
+        moreButton.hidden = true;
+
+        const count = document.createElement("p");
+        count.className = "discover-meta";
+        count.setAttribute("aria-live", "polite");
+
+        panel.append(
+            search,
+            controls,
+            actions,
+            results,
+            count,
+            moreButton
+        );
+
         feature.appendChild(panel);
 
+        const PAGE_SIZE = 12;
+        let visibleCount = PAGE_SIZE;
+        let displayedActivities = [];
+
         function getMatches() {
+            const term = search.value.trim().toLowerCase();
+
             return AdventurePlanner.getActivities().filter(activity => {
                 if (AdventurePlanner.isCompleted(activity.id)) return false;
 
@@ -131,6 +162,18 @@
                     dog.value === "exclude-restricted" &&
                     activity.dogPolicy === "restricted"
                 ) return false;
+
+                if (term) {
+                    const searchable = [
+                        activity.name,
+                        activity.destination,
+                        activity.region,
+                        activity.description,
+                        ...(activity.category || [])
+                    ].join(" ").toLowerCase();
+
+                    if (!searchable.includes(term)) return false;
+                }
 
                 return true;
             });
@@ -169,12 +212,17 @@
                     ? "Dogs not permitted"
                     : "Dog access to verify";
 
+            const categoriesLabel = (activity.category || [])
+                .map(value => value.replaceAll("-", " "))
+                .join(", ");
+
             details.textContent =
                 (activity.durationHours
                     ? activity.durationHours + " hours"
                     : "Duration to check") +
                 " · " + cost +
-                " · " + dogLabel;
+                " · " + dogLabel +
+                (categoriesLabel ? " · " + categoriesLabel : "");
 
             const complete = document.createElement("button");
             complete.type = "button";
@@ -193,26 +241,27 @@
                 if (typeof renderDayPlanner === "function") {
                     renderDayPlanner();
                 }
+
+                if (typeof renderMyActivities === "function") {
+                    renderMyActivities();
+                }
             });
 
-            card.append(heading, location, description, details, complete);
+            card.append(
+                heading,
+                location,
+                description,
+                details,
+                complete
+            );
 
             return card;
         }
 
-        function render(randomise) {
+        function render(randomise = false) {
             results.replaceChildren();
 
             let matches = getMatches();
-
-            if (matches.length === 0) {
-                const empty = document.createElement("p");
-                empty.textContent =
-                    "No uncompleted experiences match these filters. Try another area or category, or add more activities to your collection.";
-
-                results.appendChild(empty);
-                return;
-            }
 
             if (randomise) {
                 matches = matches
@@ -222,9 +271,22 @@
                     }))
                     .sort((a, b) => a.sort - b.sort)
                     .map(item => item.activity);
+
+                visibleCount = Math.min(3, matches.length);
             }
 
-            const selected = matches.slice(0, randomise ? 3 : 6);
+            displayedActivities = matches;
+
+            if (matches.length === 0) {
+                const empty = document.createElement("p");
+                empty.textContent =
+                    "No uncompleted experiences match these filters. Try another search or area, or add more activities to your collection.";
+
+                results.appendChild(empty);
+                count.textContent = "";
+                moreButton.hidden = true;
+                return;
+            }
 
             const heading = document.createElement("h4");
             heading.textContent = randomise
@@ -233,25 +295,44 @@
 
             results.appendChild(heading);
 
-            selected.forEach(activity => {
+            matches.slice(0, visibleCount).forEach(activity => {
                 results.appendChild(createCard(activity));
             });
 
-            const count = document.createElement("p");
-            count.className = "discover-meta";
             count.textContent =
-                matches.length + " uncompleted experience" +
-                (matches.length === 1 ? "" : "s") +
-                " match your filters.";
+                `Showing ${Math.min(visibleCount, matches.length)} of ` +
+                `${matches.length} uncompleted experiences.`;
 
-            results.appendChild(count);
+            moreButton.hidden = visibleCount >= matches.length;
+            moreButton.textContent =
+                `Show ${Math.min(PAGE_SIZE, matches.length - visibleCount)} more experiences`;
         }
 
-        surprise.addEventListener("click", () => render(true));
-        showAll.addEventListener("click", () => render(false));
+        surprise.addEventListener("click", () => {
+            visibleCount = 3;
+            render(true);
+        });
+
+        showAll.addEventListener("click", () => {
+            visibleCount = PAGE_SIZE;
+            render(false);
+        });
+
+        moreButton.addEventListener("click", () => {
+            visibleCount += PAGE_SIZE;
+            render(false);
+        });
+
+        search.addEventListener("input", () => {
+            visibleCount = PAGE_SIZE;
+            render(false);
+        });
 
         [region, category, dog].forEach(select => {
-            select.addEventListener("change", () => render(false));
+            select.addEventListener("change", () => {
+                visibleCount = PAGE_SIZE;
+                render(false);
+            });
         });
 
         render(true);
