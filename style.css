@@ -663,3 +663,130 @@ footer {
     color: var(--forest);
     font-weight: 600;
 }
+
+
+/* Holiday Expense Tracker */
+
+#holiday-expenses > label select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--white);
+    font: inherit;
+}
+
+.expense-summary {
+    margin: 18px 0;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.expense-total {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.expense-total strong {
+    color: var(--forest);
+    font-size: 1.8rem;
+}
+
+.expense-category-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.expense-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 20px 0;
+    padding: 18px;
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.expense-form > label:nth-of-type(5),
+.expense-form > button,
+#expense-message {
+    grid-column: 1 / -1;
+}
+
+.expense-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+}
+
+.expense-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.expense-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--white);
+}
+
+.expense-card p {
+    margin: 5px 0;
+    color: var(--muted);
+    font-size: .9rem;
+    overflow-wrap: anywhere;
+}
+
+.expense-actions {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.expense-amount {
+    color: var(--forest);
+    white-space: nowrap;
+}
+
+#expense-message {
+    margin: 0;
+    color: var(--forest);
+    font-weight: 600;
+}
+
+@media (max-width: 600px) {
+    .expense-form {
+        grid-template-columns: 1fr;
+    }
+
+    .expense-form > * {
+        grid-column: 1;
+    }
+
+    .expense-card {
+        flex-direction: column;
+    }
+
+    .expense-actions {
+        align-items: flex-start;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+    }
+}
