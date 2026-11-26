@@ -1,6 +1,4 @@
 
-/* Adventure Planner — interface refinements */
-
 :root {
     --dashboard-sage: #DCE8E3;
     --dashboard-lilac: #E8DDEB;
@@ -9,30 +7,28 @@
     --dashboard-rose: #F0DFE1;
 }
 
-/* Home dashboard statistics: five distinct colours */
-
-.dashboard-stat-card {
-    background: var(--dashboard-sage);
+/* Five distinct dashboard colours */
+.dashboard-statistics .dashboard-stat-card:nth-child(1) {
+    background: var(--dashboard-sage) !important;
 }
 
-.dashboard-stat-card:nth-child(2) {
-    background: var(--dashboard-lilac);
+.dashboard-statistics .dashboard-stat-card:nth-child(2) {
+    background: var(--dashboard-lilac) !important;
 }
 
-.dashboard-stat-card:nth-child(3) {
-    background: var(--dashboard-peach);
+.dashboard-statistics .dashboard-stat-card:nth-child(3) {
+    background: var(--dashboard-peach) !important;
 }
 
-.dashboard-stat-card:nth-child(4) {
-    background: var(--dashboard-blue);
+.dashboard-statistics .dashboard-stat-card:nth-child(4) {
+    background: var(--dashboard-blue) !important;
 }
 
-.dashboard-stat-card:nth-child(5) {
-    background: var(--dashboard-rose);
+.dashboard-statistics .dashboard-stat-card:nth-child(5) {
+    background: var(--dashboard-rose) !important;
 }
 
-/* Coming Up: editorial cards without heading bubbles */
-
+/* Coming Up cards */
 .dashboard-upcoming {
     margin-top: 34px;
 }
@@ -43,14 +39,14 @@
 
 .dashboard-plan-card {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 1fr auto;
     grid-template-areas:
         "type date"
         "name name";
     align-items: center;
-    gap: 8px 16px;
+    gap: 7px 16px;
     margin: 12px 0;
-    padding: 19px 21px;
+    padding: 20px 22px;
     border: 1px solid var(--border);
     border-left: 4px solid #8CA99A;
     border-radius: 13px;
@@ -58,28 +54,29 @@
     box-shadow: 0 3px 12px rgba(48, 59, 58, .035);
 }
 
-.dashboard-plan-card:nth-of-type(2) {
+.dashboard-upcoming .dashboard-plan-card:nth-of-type(2) {
     border-left-color: #A994B2;
 }
 
-.dashboard-plan-card:nth-of-type(3) {
+.dashboard-upcoming .dashboard-plan-card:nth-of-type(3) {
     border-left-color: #D7A88D;
 }
 
-.dashboard-plan-card:nth-of-type(4) {
+.dashboard-upcoming .dashboard-plan-card:nth-of-type(4) {
     border-left-color: #8CA9BC;
 }
 
-.dashboard-plan-type {
+/* Plain text label, not a bubble */
+.dashboard-plan-card .dashboard-plan-type {
     grid-area: type;
     display: block;
-    width: fit-content;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
+    width: auto;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
     background: transparent !important;
     color: var(--sage-dark) !important;
-    font-size: .75rem;
+    font-size: .74rem;
     font-weight: 700;
     letter-spacing: .09em;
     line-height: 1.3;
@@ -90,12 +87,12 @@
     grid-area: name;
     color: var(--ink) !important;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 500;
     line-height: 1.4;
 }
 
-.dashboard-plan-date {
+.dashboard-plan-card .dashboard-plan-date {
     grid-area: date;
     color: var(--muted);
     font-size: .82rem;
@@ -103,17 +100,11 @@
     white-space: nowrap;
 }
 
-/* Discover page */
-
+/* Discover */
 .discover-actions {
     display: flex;
-    justify-content: flex-start;
     gap: 14px;
     margin: 20px 0;
-}
-
-.discover-actions button {
-    min-width: 190px;
 }
 
 #discover-results {
@@ -145,19 +136,15 @@
     font-family: Georgia, "Times New Roman", serif;
     font-size: clamp(1.5rem, 3vw, 1.9rem);
     font-weight: 500;
-    line-height: 1.25;
 }
 
 .discover-location {
-    margin: 0 0 18px;
     color: var(--sage-dark);
     font-size: .9rem;
     font-weight: 600;
 }
 
 .discover-description {
-    margin: 0 0 20px;
-    color: var(--muted);
     line-height: 1.7;
 }
 
@@ -182,15 +169,7 @@
     font-size: .85rem;
 }
 
-.discover-empty {
-    padding: 22px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: #FFFFFF;
-}
-
 /* Shortlist */
-
 .shortlist-add-controls {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
@@ -220,7 +199,6 @@
 }
 
 .shortlist-count {
-    margin: 12px 0;
     color: var(--sage-dark);
     font-weight: 650;
 }
@@ -241,11 +219,6 @@
 
 .shortlist-card h3 {
     margin: 0 0 6px;
-    color: var(--ink);
-}
-
-.shortlist-card p {
-    margin: 7px 0;
 }
 
 .shortlist-meta {
@@ -253,8 +226,7 @@
     font-size: .9rem;
 }
 
-/* Consistent My Adventures buttons */
-
+/* My Adventures buttons */
 #my-adventures-dashboard .adventure-history-actions {
     display: flex;
     flex-wrap: wrap;
@@ -274,10 +246,6 @@
     font-weight: 650;
 }
 
-#my-adventures-dashboard .adventure-history-actions button:hover {
-    background: #CBDCD4;
-}
-
 @media (max-width: 700px) {
     .dashboard-plan-card {
         padding: 16px;
@@ -287,10 +255,7 @@
         grid-template-columns: 1fr;
     }
 
-    .shortlist-add-controls button {
-        width: 100%;
-    }
-
+    .shortlist-add-controls button,
     .discover-actions button {
         width: 100%;
     }
@@ -307,7 +272,6 @@
             "type"
             "name"
             "date";
-        gap: 6px;
     }
 
     .dashboard-plan-date {
