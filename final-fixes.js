@@ -4,6 +4,11 @@
 /*
  * Queensland Adventure Planner — final interface fixes
  * Discover shortlist controls are handled by discover.js.
+ *
+ * Important:
+ * No MutationObserver is used here. The previous observer watched
+ * the entire main section while also modifying that same section,
+ * causing repeated execution and browser script timeouts.
  */
 
 (() => {
@@ -20,20 +25,38 @@
 
     const make = (tag, className, text) => {
         const element = document.createElement(tag);
-        if (className) element.className = className;
-        if (text !== undefined) element.textContent = text;
+
+        if (className) {
+            element.className = className;
+        }
+
+        if (text !== undefined) {
+            element.textContent = text;
+        }
+
         return element;
     };
 
     function refineAddActivityForm() {
-        const form = document.querySelector("#add-activity .activity-form");
+        const form = document.querySelector(
+            "#add-activity .activity-form"
+        );
+
         if (!form) return;
 
         const heading = document.querySelector("#add-activity h2");
-        if (heading) heading.textContent = "Add an Activity";
 
-        const submit = form.querySelector('button[type="submit"]');
-        if (submit) submit.textContent = "Add Activity";
+        if (heading) {
+            heading.textContent = "Add an Activity";
+        }
+
+        const submit = form.querySelector(
+            'button[type="submit"]'
+        );
+
+        if (submit) {
+            submit.textContent = "Add Activity";
+        }
 
         const estimated = form.elements.namedItem("estimatedCost");
 
@@ -44,30 +67,44 @@
 
         if (!form.elements.namedItem("estimatedCost")) {
             const hidden = document.createElement("input");
+
             hidden.type = "hidden";
             hidden.name = "estimatedCost";
             hidden.value = "";
+
             form.appendChild(hidden);
         }
 
         const oldPet = form.elements.namedItem("dogPolicy");
+        const existingCheckbox = form.querySelector(
+            'input[name="petFriendly"]'
+        );
 
-        if (oldPet && !form.querySelector('input[name="petFriendly"]')) {
+        if (oldPet && !existingCheckbox) {
             oldPet.closest("label, .form-field")?.remove();
             oldPet.remove();
 
             const hiddenPolicy = document.createElement("input");
+
             hiddenPolicy.type = "hidden";
             hiddenPolicy.name = "dogPolicy";
             hiddenPolicy.value = "restricted";
+
             form.appendChild(hiddenPolicy);
 
-            const label = make("label", "form-field pet-friendly-checkbox");
-            label.appendChild(make("span", "", "Pet friendly"));
+            const label = make(
+                "label",
+                "form-field pet-friendly-checkbox"
+            );
+
+            label.appendChild(
+                make("span", "", "Pet friendly")
+            );
 
             const line = make("span", "pet-checkbox-line");
 
             const checkbox = document.createElement("input");
+
             checkbox.type = "checkbox";
             checkbox.name = "petFriendly";
             checkbox.checked = false;
@@ -105,70 +142,79 @@
 
     function refineMyAdventures() {
         const main = document.querySelector("main");
-        const dashboard = document.getElementById("my-adventures-dashboard");
 
-        if (dashboard && main && dashboard !== main.firstElementChild) {
-            main.insertBefore(dashboard, main.firstElementChild);
+        const dashboard = document.getElementById(
+            "my-adventures-dashboard"
+        );
+
+        if (
+            dashboard &&
+            main &&
+            dashboard !== main.firstElementChild
+        ) {
+            main.insertBefore(
+                dashboard,
+                main.firstElementChild
+            );
         }
 
         if (dashboard) {
-            dashboard.querySelectorAll(".adventure-dashboard-group").forEach(group => {
-                const heading = group.querySelector("h3")?.textContent || "";
+            dashboard
+                .querySelectorAll(".adventure-dashboard-group")
+                .forEach(group => {
+                    const heading =
+                        group.querySelector("h3")?.textContent || "";
 
-                if (/holiday|saved holidays/i.test(heading)) {
-                    group.remove();
-                }
-            });
+                    if (/holiday|saved holidays/i.test(heading)) {
+                        group.remove();
+                    }
+                });
 
-            dashboard.querySelectorAll(".dashboard-stat-card").forEach(card => {
-                const label =
-                    card.querySelector(".dashboard-stat-label")?.textContent || "";
+            dashboard
+                .querySelectorAll(".dashboard-stat-card")
+                .forEach(card => {
+                    const label =
+                        card.querySelector(
+                            ".dashboard-stat-label"
+                        )?.textContent || "";
 
-                if (/holiday/i.test(label)) {
-                    card.remove();
-                }
-            });
+                    if (/holiday/i.test(label)) {
+                        card.remove();
+                    }
+                });
         }
 
         document.querySelectorAll(
-            "main > .holiday-planner-section, main > #saved-holidays, main > .saved-holiday-section"
+            "main > .holiday-planner-section, " +
+            "main > #saved-holidays, " +
+            "main > .saved-holiday-section"
         ).forEach(section => section.remove());
     }
 
     function run() {
-        if (page === "my-adventures") {
-            refineAddActivityForm();
-            refineMyAdventures();
-        }
+        if (page !== "my-adventures") return;
+
+        refineAddActivityForm();
+        refineMyAdventures();
     }
 
     function initialise() {
+        if (page !== "my-adventures") return;
+
         run();
 
-        document.addEventListener("adventureplanner:datachanged", () => {
-            if (page === "my-adventures") {
-                refineMyAdventures();
-                refineAddActivityForm();
-            }
-        });
-
-        if (page === "my-adventures") {
-            const main = document.querySelector("main");
-
-            if (main) {
-                const observer = new MutationObserver(run);
-                observer.observe(main, {
-                    childList: true,
-                    subtree: true
-                });
-            }
-        }
+        document.addEventListener(
+            "adventureplanner:datachanged",
+            run
+        );
     }
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", initialise, {
-            once: true
-        });
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialise,
+            { once: true }
+        );
     } else {
         initialise();
     }
