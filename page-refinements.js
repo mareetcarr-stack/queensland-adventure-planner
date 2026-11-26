@@ -22,15 +22,15 @@
     if (!main) return;
 
     const welcome = main.querySelector(".welcome");
-    const adventureDashboard = document.getElementById("home-dashboard");
-    const history = document.getElementById("my-adventures-dashboard");
+    const adventureDashboard = document.getElementById("home-dashboard"); // "Your Adventure Dashboard"
+    const history = document.getElementById("my-adventures-dashboard");   // coloured cards / experiences
 
-    // 1. Welcome at the very top
+    // 1. Welcome at the top
     if (welcome) {
         main.insertBefore(welcome, main.firstChild);
     }
 
-    // 2. "Your Adventure Dashboard" directly under the welcome
+    // 2. "Your Adventure Dashboard" directly under welcome
     if (adventureDashboard) {
         if (welcome) {
             welcome.insertAdjacentElement("afterend", adventureDashboard);
@@ -39,7 +39,7 @@
         }
     }
 
-    // 3. Personal history (coloured cards / experiences / itineraries) under that
+    // 3. History section under that
     if (history) {
         const anchor = adventureDashboard || welcome;
         if (anchor) {
