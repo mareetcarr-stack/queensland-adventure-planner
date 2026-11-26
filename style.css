@@ -546,3 +546,36 @@ footer {
         align-self: flex-start;
     }
 }
+
+/* Calendar export */
+
+.calendar-export-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 12px 0;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--white);
+}
+
+.calendar-export-row span {
+    overflow-wrap: anywhere;
+}
+
+.calendar-export-row button {
+    flex-shrink: 0;
+}
+
+#calendar-export h3 {
+    margin-top: 26px;
+}
+
+@media (max-width: 600px) {
+    .calendar-export-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
