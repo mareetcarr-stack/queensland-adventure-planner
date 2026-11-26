@@ -2,15 +2,14 @@
 "use strict";
 
 /*
- * Discover Adventures
- * Displays one experience at a time to keep the page responsive.
+ * Adventure Planner — Discover
+ * Keyword-led search with optional area, category and pet filters.
  */
 
 (() => {
     function initialiseDiscover() {
-        if (!window.AdventurePlanner) return;
-
         const planner = window.AdventurePlanner;
+        if (!planner) return;
 
         const feature = [...document.querySelectorAll("main > .feature")]
             .find(section =>
@@ -21,12 +20,6 @@
 
         feature.querySelector(".status")?.remove();
 
-        const intro = feature.querySelector("p");
-        if (intro) {
-            intro.textContent =
-                "Find an experience that catches your eye. Browse one idea at a time and discover somewhere new.";
-        }
-
         const panel = document.createElement("div");
         panel.id = "discover-panel";
         panel.className = "discover-panel";
@@ -35,8 +28,8 @@
         search.type = "search";
         search.id = "discover-search";
         search.className = "search-input";
-        search.placeholder = "Search activities or destinations...";
-        search.setAttribute("aria-label", "Search adventures");
+        search.placeholder = 'Filter by keywords, e.g. "beach", "park" or "waterfall"';
+        search.setAttribute("aria-label", "Filter experiences by keyword");
 
         const controls = document.createElement("div");
         controls.className = "discover-controls";
@@ -60,115 +53,92 @@
 
             label.append(caption, select);
             controls.appendChild(label);
-
             return select;
         }
 
         const activities = planner.getActivities();
 
         const regions = [...new Set(
-            activities.map(activity => activity.region).filter(Boolean)
+            activities.map(item => item.region).filter(Boolean)
         )].sort();
 
         const categories = [...new Set(
-            activities.flatMap(activity => activity.category || [])
+            activities.flatMap(item => item.category || [])
         )].sort();
 
-        const region = makeSelect("Explore an area", "discover-region", [
+        const region = makeSelect("Area", "discover-region", [
             { value: "all", label: "Anywhere" },
             ...regions.map(value => ({ value, label: value }))
         ]);
 
-        const category = makeSelect("Type of experience", "discover-category", [
-            { value: "all", label: "Anything" },
+        const category = makeSelect("Experience type", "discover-category", [
+            { value: "all", label: "Any type" },
             ...categories.map(value => ({
                 value,
                 label: value.replaceAll("-", " ")
-                    .replace(/\b\w/g, character => character.toUpperCase())
+                    .replace(/\b\w/g, char => char.toUpperCase())
             }))
         ]);
 
-        const dog = makeSelect("Dog access", "discover-dogs", [
-            { value: "any", label: "Any dog policy" },
-            { value: "friendly", label: "Dog-friendly only" },
-            { value: "exclude-restricted", label: "Exclude places that prohibit dogs" }
-        ]);
+        const petLabel = document.createElement("label");
+        petLabel.className = "pet-friendly-toggle";
+
+        const petCheckbox = document.createElement("input");
+        petCheckbox.type = "checkbox";
+        petCheckbox.id = "discover-pet-friendly";
+
+        const petText = document.createElement("span");
+        petText.textContent = "Pet-friendly options only";
+
+        petLabel.append(petCheckbox, petText);
+        controls.appendChild(petLabel);
 
         const results = document.createElement("div");
         results.id = "discover-results";
         results.className = "discover-results";
         results.setAttribute("aria-live", "polite");
 
-        const actions = document.createElement("div");
-        actions.className = "discover-actions";
-
-        const nextButton = document.createElement("button");
-        nextButton.type = "button";
-        nextButton.className = "add-activity-button";
-        nextButton.textContent = "Show another idea";
-
         const count = document.createElement("p");
         count.className = "discover-count";
 
-        actions.appendChild(nextButton);
-
-        panel.append(search, controls, actions, results, count);
+        panel.append(search, controls, count, results);
         feature.appendChild(panel);
 
-        let currentActivityId = null;
-        let matchingActivities = [];
-
         function getMatches() {
-            const term = search.value.trim().toLowerCase();
+            const terms = search.value.trim().toLowerCase()
+                .split(/\s+/)
+                .filter(Boolean);
+
+            if (!terms.length) return [];
 
             return planner.getActivities().filter(activity => {
                 if (planner.isCompleted(activity.id)) return false;
 
-                if (region.value !== "all" && activity.region !== region.value) {
+                if (region.value !== "all" &&
+                    activity.region !== region.value) return false;
+
+                if (category.value !== "all" &&
+                    !(activity.category || []).includes(category.value)) return false;
+
+                if (petCheckbox.checked && activity.petFriendly !== true) {
                     return false;
                 }
 
-                if (
-                    category.value !== "all" &&
-                    !(activity.category || []).includes(category.value)
-                ) {
-                    return false;
-                }
+                const searchable = [
+                    activity.name,
+                    activity.destination,
+                    activity.region,
+                    activity.description,
+                    ...(activity.category || [])
+                ].join(" ").toLowerCase();
 
-                if (dog.value === "friendly" && activity.dogPolicy !== "friendly") {
-                    return false;
-                }
-
-                if (
-                    dog.value === "exclude-restricted" &&
-                    activity.dogPolicy === "restricted"
-                ) {
-                    return false;
-                }
-
-                if (term) {
-                    const searchable = [
-                        activity.name,
-                        activity.destination,
-                        activity.region,
-                        activity.description,
-                        ...(activity.category || [])
-                    ].join(" ").toLowerCase();
-
-                    if (!searchable.includes(term)) return false;
-                }
-
-                return true;
+                return terms.every(term => searchable.includes(term));
             });
         }
 
         function createCard(activity) {
             const card = document.createElement("article");
             card.className = "discover-card";
-
-            const eyebrow = document.createElement("span");
-            eyebrow.className = "discover-card-eyebrow";
-            eyebrow.textContent = "A place to discover";
 
             const heading = document.createElement("h4");
             heading.textContent = activity.name;
@@ -182,31 +152,26 @@
 
             const description = document.createElement("p");
             description.className = "discover-description";
-            description.textContent =
-                activity.description || "Explore this experience.";
-
-            const cost = activity.cost === "free"
-                ? "Free"
-                : activity.estimatedCost != null
-                    ? "Approx. $" + activity.estimatedCost + " per person"
-                    : "Cost to check";
-
-            const dogLabel = activity.dogPolicy === "friendly"
-                ? "Dog-friendly"
-                : activity.dogPolicy === "restricted"
-                    ? "Dogs not permitted"
-                    : "Dog access to verify";
+            description.textContent = activity.description || "";
 
             const details = document.createElement("div");
             details.className = "discover-details";
 
-            [
+            const values = [
                 activity.durationHours
-                    ? activity.durationHours + " hours"
+                    ? `${activity.durationHours} hours`
                     : "Duration to check",
-                cost,
-                dogLabel
-            ].forEach(value => {
+                activity.estimatedCost === 0
+                    ? "Free"
+                    : activity.estimatedCost != null
+                        ? `Approx. $${activity.estimatedCost} per person`
+                        : "Cost to check",
+                activity.petFriendly
+                    ? "Pet-friendly"
+                    : "Not pet-friendly"
+            ];
+
+            values.forEach(value => {
                 const item = document.createElement("span");
                 item.textContent = value;
                 details.appendChild(item);
@@ -219,75 +184,52 @@
 
             complete.addEventListener("click", () => {
                 planner.toggleCompleted(activity.id);
-                currentActivityId = null;
-                displayNextIdea();
+                render();
             });
 
-            card.append(
-                eyebrow,
-                heading,
-                location,
-                description,
-                details,
-                complete
-            );
-
+            card.append(heading, location, description, details, complete);
             return card;
         }
 
-        function displayNextIdea() {
-            matchingActivities = getMatches();
+        function render() {
             results.replaceChildren();
 
-            if (!matchingActivities.length) {
-                const empty = document.createElement("p");
-                empty.className = "discover-empty";
-                empty.textContent =
-                    "No experiences match these filters. Try a different area, category or search.";
+            const term = search.value.trim();
 
-                results.appendChild(empty);
-                count.textContent = "No matching experiences";
-                nextButton.disabled = true;
-                currentActivityId = null;
+            if (!term) {
+                count.textContent = "";
+                const prompt = document.createElement("p");
+                prompt.className = "discover-empty";
+                prompt.textContent =
+                    "Enter a keyword above to explore matching experiences.";
+                results.appendChild(prompt);
                 return;
             }
 
-            nextButton.disabled = false;
+            const matches = getMatches();
 
-            let choices = matchingActivities;
+            count.textContent = `${matches.length} matching experience${matches.length === 1 ? "" : "s"}`;
 
-            if (currentActivityId && choices.length > 1) {
-                choices = choices.filter(
-                    activity => activity.id !== currentActivityId
-                );
+            if (!matches.length) {
+                const empty = document.createElement("p");
+                empty.className = "discover-empty";
+                empty.textContent =
+                    "No matching experiences. Try another keyword or change your filters.";
+                results.appendChild(empty);
+                return;
             }
 
-            const selected = choices[
-                Math.floor(Math.random() * choices.length)
-            ];
-
-            currentActivityId = selected.id;
-            results.appendChild(createCard(selected));
-
-            count.textContent =
-                `${matchingActivities.length} matching experiences available`;
+            matches.forEach(activity => {
+                results.appendChild(createCard(activity));
+            });
         }
 
-        nextButton.addEventListener("click", displayNextIdea);
+        search.addEventListener("input", render);
+        [region, category, petCheckbox].forEach(control =>
+            control.addEventListener("change", render)
+        );
 
-        search.addEventListener("input", () => {
-            currentActivityId = null;
-            displayNextIdea();
-        });
-
-        [region, category, dog].forEach(select => {
-            select.addEventListener("change", () => {
-                currentActivityId = null;
-                displayNextIdea();
-            });
-        });
-
-        displayNextIdea();
+        render();
     }
 
     document.addEventListener("DOMContentLoaded", initialiseDiscover);
