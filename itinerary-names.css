@@ -1,0 +1,6 @@
+/* Unique itinerary titles */
+.saved-itinerary-date {
+    margin: 4px 0 12px;
+    color: var(--muted, #77736B);
+    font-size: .9rem;
+}
