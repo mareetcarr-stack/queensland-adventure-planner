@@ -1,316 +1,235 @@
 
-/* Adventure Planner — interface refinements */
+"use strict";
 
-:root {
-    --dashboard-sage: #DCE8E3;
-    --dashboard-lilac: #E8DDEB;
-    --dashboard-peach: #F2E2D4;
-    --dashboard-blue: #DDE8EF;
-    --dashboard-rose: #F0DFE1;
-}
+/*
+ * Adventure Planner — page-specific interface refinements.
+ */
 
-/* Home dashboard statistics: five distinct colours */
+(() => {
+    const planner = window.AdventurePlanner;
+    const page = document.body.dataset.page;
 
-.dashboard-stat-card {
-    background: var(--dashboard-sage);
-}
+    const make = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined) node.textContent = text;
+        return node;
+    };
 
-.dashboard-stat-card:nth-child(2) {
-    background: var(--dashboard-lilac);
-}
+    function refineShortlist() {
+        if (!planner || document.getElementById("my-shortlist")) return;
 
-.dashboard-stat-card:nth-child(3) {
-    background: var(--dashboard-peach);
-}
+        const section = make("section", "feature");
+        section.id = "my-shortlist";
 
-.dashboard-stat-card:nth-child(4) {
-    background: var(--dashboard-blue);
-}
+        section.append(
+            make("h2", "", "My Shortlist"),
+            make("p", "", "Save experiences you'd like to try. Add them from the list below and remove them whenever you like.")
+        );
 
-.dashboard-stat-card:nth-child(5) {
-    background: var(--dashboard-rose);
-}
+        const controls = make("div", "shortlist-add-controls");
 
-/* Coming Up: editorial cards without heading bubbles */
+        const search = document.createElement("input");
+        search.type = "search";
+        search.placeholder = "Find an experience...";
+        search.setAttribute("aria-label", "Search experiences");
 
-.dashboard-upcoming {
-    margin-top: 34px;
-}
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", "Choose an experience to add");
 
-.dashboard-upcoming > h3 {
-    margin-bottom: 16px;
-}
+        const addButton = make("button", "add-activity-button", "＋ Add to shortlist");
+        addButton.type = "button";
 
-.dashboard-plan-card {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-        "type date"
-        "name name";
-    align-items: center;
-    gap: 8px 16px;
-    margin: 12px 0;
-    padding: 19px 21px;
-    border: 1px solid var(--border);
-    border-left: 4px solid #8CA99A;
-    border-radius: 13px;
-    background: #FFFFFF;
-    box-shadow: 0 3px 12px rgba(48, 59, 58, .035);
-}
+        controls.append(search, select, addButton);
 
-.dashboard-plan-card:nth-of-type(2) {
-    border-left-color: #A994B2;
-}
+        const count = make("p", "shortlist-count", "");
+        count.setAttribute("aria-live", "polite");
 
-.dashboard-plan-card:nth-of-type(3) {
-    border-left-color: #D7A88D;
-}
+        const results = make("div", "shortlist-results");
+        section.append(controls, count, results);
 
-.dashboard-plan-card:nth-of-type(4) {
-    border-left-color: #8CA9BC;
-}
+        const main = document.querySelector("main");
+        const welcome = main?.querySelector(".welcome");
 
-.dashboard-plan-type {
-    grid-area: type;
-    display: block;
-    width: fit-content;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent !important;
-    color: var(--sage-dark) !important;
-    font-size: .75rem;
-    font-weight: 700;
-    letter-spacing: .09em;
-    line-height: 1.3;
-    text-transform: uppercase;
-}
+        if (welcome) welcome.insertAdjacentElement("afterend", section);
+        else main?.appendChild(section);
 
-.dashboard-plan-card strong {
-    grid-area: name;
-    color: var(--ink) !important;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 1.15rem;
-    font-weight: 500;
-    line-height: 1.4;
-}
+        function getShortlisted() {
+            return new Set(planner.data.shortlistedActivities || []);
+        }
 
-.dashboard-plan-date {
-    grid-area: date;
-    color: var(--muted);
-    font-size: .82rem;
-    text-align: right;
-    white-space: nowrap;
-}
+        function save() {
+            planner.data.shortlistedActivities = [...getShortlisted()];
+            return planner.saveData();
+        }
 
-/* Discover page */
+        function populateSelect() {
+            const term = search.value.trim().toLowerCase();
+            const shortlisted = getShortlisted();
 
-.discover-actions {
-    display: flex;
-    justify-content: flex-start;
-    gap: 14px;
-    margin: 20px 0;
-}
+            select.replaceChildren();
 
-.discover-actions button {
-    min-width: 190px;
-}
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Choose an experience...";
+            select.appendChild(placeholder);
 
-#discover-results {
-    margin-top: 20px;
-}
+            planner.getActivities()
+                .filter(activity => !planner.isCompleted(activity.id))
+                .filter(activity => !shortlisted.has(activity.id))
+                .filter(activity => {
+                    const searchable = [
+                        activity.name,
+                        activity.destination,
+                        activity.region,
+                        activity.description
+                    ].join(" ").toLowerCase();
 
-#discover-results .discover-card {
-    margin: 0;
-    padding: 28px;
-    border: 1px solid var(--border);
-    border-radius: 17px;
-    background: #FFFFFF;
-    box-shadow: var(--shadow);
-}
+                    return !term || searchable.includes(term);
+                })
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach(activity => {
+                    const option = document.createElement("option");
+                    option.value = activity.id;
+                    option.textContent =
+                        `${activity.name} — ${activity.destination || activity.region || ""}`;
+                    select.appendChild(option);
+                });
+        }
 
-.discover-card-eyebrow {
-    display: block;
-    margin-bottom: 10px;
-    color: var(--sage-dark);
-    font-size: .75rem;
-    font-weight: 700;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-}
+        function render() {
+            results.replaceChildren();
 
-#discover-results .discover-card h4 {
-    margin: 0 0 8px;
-    color: var(--ink);
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(1.5rem, 3vw, 1.9rem);
-    font-weight: 500;
-    line-height: 1.25;
-}
+            const shortlisted = getShortlisted();
+            const activities = planner.getActivities().filter(activity =>
+                shortlisted.has(activity.id) && !planner.isCompleted(activity.id)
+            );
 
-.discover-location {
-    margin: 0 0 18px;
-    color: var(--sage-dark);
-    font-size: .9rem;
-    font-weight: 600;
-}
+            count.textContent = `${activities.length} experiences saved`;
 
-.discover-description {
-    margin: 0 0 20px;
-    color: var(--muted);
-    line-height: 1.7;
-}
+            if (!activities.length) {
+                results.appendChild(make(
+                    "p",
+                    "shortlist-empty",
+                    "Your shortlist is empty. Choose an experience from the dropdown above to add one."
+                ));
+            }
 
-.discover-details {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 18px 0;
-}
+            activities.forEach(activity => {
+                const card = make("article", "shortlist-card");
 
-.discover-details span {
-    padding: 6px 11px;
-    border-radius: 8px;
-    background: var(--surface);
-    color: var(--ink);
-    font-size: .82rem;
-}
+                const name = make("h3", "", activity.name);
+                const location = make(
+                    "p",
+                    "shortlist-meta",
+                    [activity.destination, activity.region].filter(Boolean).join(" · ")
+                );
+                const description = make(
+                    "p",
+                    "",
+                    activity.description || "Explore this experience."
+                );
+                const details = make(
+                    "p",
+                    "shortlist-meta",
+                    `${activity.durationHours || 0} hours · ${
+                        activity.estimatedCost == null
+                            ? "Cost to check"
+                            : activity.estimatedCost === 0
+                                ? "Free"
+                                : "Approx. $" + activity.estimatedCost + " per person"
+                    }`
+                );
 
-.discover-count {
-    margin-top: 12px;
-    color: var(--muted);
-    font-size: .85rem;
-}
+                const remove = make("button", "reset-filters", "Remove from shortlist");
+                remove.type = "button";
 
-.discover-empty {
-    padding: 22px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: #FFFFFF;
-}
+                remove.addEventListener("click", () => {
+                    const updated = getShortlisted();
+                    updated.delete(activity.id);
+                    planner.data.shortlistedActivities = [...updated];
 
-/* Shortlist */
+                    if (save()) render();
+                });
 
-.shortlist-add-controls {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
-    align-items: center;
-    gap: 12px;
-    margin: 22px 0;
-}
+                card.append(name, location, description, details, remove);
+                results.appendChild(card);
+            });
 
-.shortlist-add-controls input,
-.shortlist-add-controls select {
-    width: 100%;
-    min-width: 0;
-    height: 48px;
-    min-height: 48px;
-    margin: 0;
-    padding: 10px 13px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #FFFEFC;
-    color: var(--ink);
-    font: inherit;
-}
+            populateSelect();
+        }
 
-.shortlist-add-controls button {
-    height: 48px;
-    white-space: nowrap;
-}
+        addButton.addEventListener("click", () => {
+            if (!select.value) return;
 
-.shortlist-count {
-    margin: 12px 0;
-    color: var(--sage-dark);
-    font-weight: 650;
-}
+            const updated = getShortlisted();
+            updated.add(select.value);
+            planner.data.shortlistedActivities = [...updated];
 
-.shortlist-results {
-    display: grid;
-    gap: 14px;
-    margin-top: 18px;
-}
+            if (save()) {
+                search.value = "";
+                render();
+            }
+        });
 
-.shortlist-card {
-    padding: 20px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    background: #FFFFFF;
-    box-shadow: 0 3px 14px rgba(48, 59, 58, .035);
-}
+        search.addEventListener("input", populateSelect);
+        document.addEventListener("adventureplanner:datachanged", render);
 
-.shortlist-card h3 {
-    margin: 0 0 6px;
-    color: var(--ink);
-}
-
-.shortlist-card p {
-    margin: 7px 0;
-}
-
-.shortlist-meta {
-    color: var(--muted);
-    font-size: .9rem;
-}
-
-/* Consistent My Adventures buttons */
-
-#my-adventures-dashboard .adventure-history-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-#my-adventures-dashboard .adventure-history-actions button {
-    min-width: 150px;
-    min-height: 42px;
-    padding: 10px 16px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--sage);
-    color: #40554B;
-    font: inherit;
-    font-size: .9rem;
-    font-weight: 650;
-}
-
-#my-adventures-dashboard .adventure-history-actions button:hover {
-    background: #CBDCD4;
-}
-
-@media (max-width: 700px) {
-    .dashboard-plan-card {
-        padding: 16px;
+        populateSelect();
+        render();
     }
 
-    .shortlist-add-controls {
-        grid-template-columns: 1fr;
+    function refineHome() {
+        const dashboard = document.getElementById("home-dashboard");
+        if (!dashboard) return;
+
+        const links = [
+            ["Discover Adventures", "discover.html"],
+            ["Generate a Day Trip", "plan-day.html"],
+            ["My Adventures", "my-adventures.html"],
+            ["My Shortlist", "shortlist.html"],
+            ["Explore the Map", "plan-day.html"]
+        ];
+
+        const grid = dashboard.querySelector(".dashboard-shortcut-grid");
+
+        if (grid) {
+            grid.replaceChildren();
+
+            links.forEach(([label, url]) => {
+                const link = make("a", "dashboard-shortcut", label);
+                link.href = url;
+                grid.appendChild(link);
+            });
+        }
+
+        dashboard.querySelectorAll(".dashboard-upcoming a").forEach(link => {
+            link.href = "plan-day.html";
+        });
     }
 
-    .shortlist-add-controls button {
-        width: 100%;
+    function refineMyAdventures() {
+        const dashboard = document.getElementById("my-adventures-dashboard");
+        if (!dashboard) return;
+
+        const main = document.querySelector("main");
+        if (main) main.insertBefore(dashboard, main.firstChild);
+
+        dashboard.querySelectorAll(".adventure-dashboard-group").forEach(group => {
+            const heading = group.querySelector("h3")?.textContent || "";
+
+            if (
+                heading.includes("Holiday Plans") ||
+                heading.includes("Personal Activities")
+            ) {
+                group.remove();
+            }
+        });
     }
 
-    .discover-actions button {
-        width: 100%;
-    }
-
-    #discover-results .discover-card {
-        padding: 21px;
-    }
-}
-
-@media (max-width: 420px) {
-    .dashboard-plan-card {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "type"
-            "name"
-            "date";
-        gap: 6px;
-    }
-
-    .dashboard-plan-date {
-        text-align: left;
-    }
-}
+    document.addEventListener("DOMContentLoaded", () => {
+        if (page === "shortlist") refineShortlist();
+        if (page === "home") refineHome();
+        if (page === "my-adventures") refineMyAdventures();
+    });
+})();
