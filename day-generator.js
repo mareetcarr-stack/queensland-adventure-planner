@@ -2,24 +2,13 @@
 "use strict";
 
 /*
- * Automatic Day Trip Generator
- *
- * Features:
- * - Destination-based activity grouping
- * - Approximate distance filter from Clontarf
- * - Budget, duration and dog preferences
- * - Excludes completed activities
- * - Selectable activities
- * - Choose the planned outing date
- * - Save itineraries against the selected date
- *
- * Distance estimates use straight-line distance multiplied by 1.3.
- * They are not live road distances or navigation directions.
+ * Adventure Planner — Day Generator
+ * Generates one destination-based itinerary at a time.
  */
 
 (() => {
     function initialiseDayGenerator() {
-        if (typeof AdventurePlanner === "undefined") return;
+        if (!window.AdventurePlanner) return;
 
         const feature = [...document.querySelectorAll("main > .feature")]
             .find(section =>
@@ -31,12 +20,12 @@
         feature.querySelector(".status")?.remove();
 
         const introduction = feature.querySelector("p");
-
         if (introduction) {
             introduction.textContent =
-                "Build a suggested day out based on distance from home, available time, budget, dog preferences and your chosen date.";
+                "Choose your date and preferences, then generate a suggested itinerary. Generate again whenever you want a different idea.";
         }
 
+        const planner = window.AdventurePlanner;
         const HOME = { lat: -27.253, lon: 153.083 };
 
         const LOCATIONS = {
@@ -92,49 +81,37 @@
             "Tallebudgera Creek": [-28.112, 153.456]
         };
 
-        function localDateString(date = new Date()) {
-            const local = new Date(
-                date.getTime() - date.getTimezoneOffset() * 60000
-            );
-            return local.toISOString().slice(0, 10);
-        }
+        const localDate = () => {
+            const now = new Date();
+            return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                .toISOString().slice(0, 10);
+        };
 
-        function distanceBetween(a, b) {
+        const distanceBetween = (a, b) => {
             const radians = degrees => degrees * Math.PI / 180;
-            const earthRadius = 6371;
-
+            const radius = 6371;
             const lat1 = radians(a.lat);
             const lat2 = radians(b.lat);
-            const deltaLat = radians(b.lat - a.lat);
-            const deltaLon = radians(b.lon - a.lon);
+            const dLat = radians(b.lat - a.lat);
+            const dLon = radians(b.lon - a.lon);
+            const value = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+            return radius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+        };
 
-            const value =
-                Math.sin(deltaLat / 2) ** 2 +
-                Math.cos(lat1) * Math.cos(lat2) *
-                Math.sin(deltaLon / 2) ** 2;
-
-            return earthRadius * 2 *
-                Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
-        }
-
-        function estimatedRoadDistance(destination) {
+        const estimatedDistance = destination => {
             const coordinates = LOCATIONS[destination];
-
             if (!coordinates) return null;
 
-            const straightLine = distanceBetween(
+            return Math.round(distanceBetween(
                 HOME,
                 { lat: coordinates[0], lon: coordinates[1] }
-            );
-
-            return Math.round(straightLine * 1.3);
-        }
+            ) * 1.3);
+        };
 
         const style = document.createElement("style");
-
         style.textContent = `
             .day-generator { margin-top: 20px; }
-
             .day-generator-controls {
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -143,72 +120,62 @@
                 border-radius: 12px;
                 background: var(--surface);
             }
-
             .day-generator-controls .filter-field { min-width: 0; }
-
             .day-generator-controls select,
             .day-generator-controls input {
                 width: 100%;
-                min-height: 44px;
+                min-height: 46px;
                 padding: 10px;
                 border: 1px solid var(--border);
-                border-radius: 8px;
+                border-radius: 9px;
                 background: white;
-                color: var(--text);
+                color: var(--ink);
                 font: inherit;
             }
-
             .day-generator-actions {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
-                margin: 16px 0;
+                margin: 18px 0;
             }
-
-            .day-generator-actions button { flex: 1 1 180px; }
-
+            .day-generator-actions button {
+                min-width: 210px;
+            }
             .generated-day {
                 margin-top: 20px;
-                padding: 18px;
+                padding: 22px;
                 border: 1px solid var(--border);
-                border-radius: 12px;
+                border-radius: 16px;
                 background: white;
+                box-shadow: var(--shadow);
             }
-
             .generated-day h4 {
-                margin: 0 0 6px;
-                color: var(--forest);
-                font-size: 1.15rem;
+                margin: 0 0 8px;
+                color: var(--sage-dark);
+                font-size: 1.35rem;
             }
-
             .generated-day-intro,
             .generated-day-meta {
                 color: var(--muted);
                 font-size: .9rem;
-                line-height: 1.5;
+                line-height: 1.55;
             }
-
             .generated-activity {
                 display: flex;
-                gap: 12px;
                 align-items: flex-start;
-                padding: 13px 0;
+                gap: 12px;
+                padding: 15px 0;
                 border-top: 1px solid var(--border);
+                cursor: pointer;
             }
-
             .generated-activity input {
                 width: 19px;
                 height: 19px;
                 margin-top: 3px;
                 flex-shrink: 0;
-                accent-color: var(--forest);
+                accent-color: var(--sage-dark);
             }
-
             .generated-activity strong {
                 display: block;
-                color: var(--forest);
+                color: var(--ink);
             }
-
             .generated-activity span {
                 display: block;
                 margin-top: 3px;
@@ -216,30 +183,25 @@
                 font-size: .88rem;
                 line-height: 1.5;
             }
-
             .generated-day-summary {
-                margin-top: 14px;
-                padding: 13px;
-                border-radius: 8px;
-                background: var(--surface);
-                color: var(--forest);
+                margin: 16px 0;
+                padding: 15px;
+                border-radius: 11px;
+                background: var(--sage);
+                color: #40554B;
+                font-weight: 600;
                 font-size: .9rem;
-                line-height: 1.6;
             }
-
             .day-generator-message {
-                color: var(--forest);
+                color: var(--sage-dark);
                 font-weight: 600;
             }
-
             @media (max-width: 600px) {
-                .day-generator-controls {
-                    grid-template-columns: 1fr;
-                    padding: 14px;
-                }
+                .day-generator-controls { grid-template-columns: 1fr; }
+                .generated-day { padding: 16px; }
+                .day-generator-actions button { width: 100%; }
             }
         `;
-
         document.head.appendChild(style);
 
         const panel = document.createElement("div");
@@ -268,20 +230,18 @@
 
         const dateLabel = document.createElement("label");
         dateLabel.className = "filter-field";
-
         const dateCaption = document.createElement("span");
         dateCaption.textContent = "Date of your outing";
 
         const dateInput = document.createElement("input");
         dateInput.type = "date";
         dateInput.id = "generator-date";
-        dateInput.value = localDateString();
-        dateInput.min = localDateString();
+        dateInput.value = localDate();
+        dateInput.min = localDate();
         dateInput.required = true;
-
         dateLabel.append(dateCaption, dateInput);
 
-        const distanceControl = createSelect(
+        const distance = createSelect(
             "Maximum estimated drive distance from Clontarf",
             "generator-distance",
             [
@@ -295,7 +255,7 @@
             ]
         );
 
-        const durationControl = createSelect(
+        const duration = createSelect(
             "Available activity time",
             "generator-duration",
             [
@@ -306,7 +266,7 @@
             ]
         );
 
-        const budgetControl = createSelect(
+        const budget = createSelect(
             "Activity budget per person",
             "generator-budget",
             [
@@ -318,7 +278,7 @@
             ]
         );
 
-        const dogControl = createSelect(
+        const dogs = createSelect(
             "Dog preference",
             "generator-dogs",
             [
@@ -330,14 +290,7 @@
 
         const controls = document.createElement("div");
         controls.className = "day-generator-controls";
-
-        controls.append(
-            dateLabel,
-            distanceControl.label,
-            durationControl.label,
-            budgetControl.label,
-            dogControl.label
-        );
+        controls.append(dateLabel, distance.label, duration.label, budget.label, dogs.label);
 
         const actions = document.createElement("div");
         actions.className = "day-generator-actions";
@@ -346,14 +299,7 @@
         generateButton.type = "button";
         generateButton.className = "add-activity-button";
         generateButton.textContent = "Generate my day out";
-
-        const regenerateButton = document.createElement("button");
-        regenerateButton.type = "button";
-        regenerateButton.className = "reset-filters";
-        regenerateButton.textContent = "Try another suggestion";
-        regenerateButton.hidden = true;
-
-        actions.append(generateButton, regenerateButton);
+        actions.appendChild(generateButton);
 
         const results = document.createElement("div");
         results.id = "generated-day-results";
@@ -365,99 +311,95 @@
         panel.append(controls, actions, results, message);
         feature.appendChild(panel);
 
-        function getEligibleActivities() {
-            return AdventurePlanner.getActivities().filter(activity => {
-                if (AdventurePlanner.isCompleted(activity.id)) return false;
+        function shuffle(items) {
+            const result = [...items];
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
+            }
+            return result;
+        }
 
-                const duration = Number(activity.durationHours);
+        function eligibleActivities() {
+            const advanceBookingPattern =
+                /\b(book(?:ing)?(?:\s+(?:ahead|in advance|required))?|pre[- ]?book|ticket(?:s|ed)?|reservation|show dates)\b/i;
 
-                if (!Number.isFinite(duration) || duration <= 0) return false;
+            return planner.getActivities().filter(activity => {
+                if (planner.isCompleted(activity.id)) return false;
 
-                if (
-                    dogControl.select.value === "friendly" &&
-                    activity.dogPolicy !== "friendly"
-                ) return false;
+                const hours = Number(activity.durationHours);
+                if (!Number.isFinite(hours) || hours <= 0) return false;
 
-                if (
-                    dogControl.select.value === "exclude-restricted" &&
-                    activity.dogPolicy === "restricted"
-                ) return false;
+                const planningText = `${activity.name || ""} ${activity.description || ""}`;
+                if (advanceBookingPattern.test(planningText)) return false;
 
-                const budget = budgetControl.select.value;
+                if (dogs.select.value === "friendly" &&
+                    activity.dogPolicy !== "friendly") return false;
 
-                if (budget !== "any") {
-                    if (
-                        activity.estimatedCost === null ||
-                        activity.estimatedCost === undefined ||
-                        Number(activity.estimatedCost) > Number(budget)
-                    ) return false;
+                if (dogs.select.value === "exclude-restricted" &&
+                    activity.dogPolicy === "restricted") return false;
+
+                if (budget.select.value !== "any") {
+                    if (activity.estimatedCost == null ||
+                        Number(activity.estimatedCost) > Number(budget.select.value)) {
+                        return false;
+                    }
                 }
 
-                const maximumDistance = distanceControl.select.value;
-
-                if (maximumDistance !== "any") {
-                    const distance = estimatedRoadDistance(activity.destination);
-
-                    if (
-                        distance === null ||
-                        distance > Number(maximumDistance)
-                    ) return false;
+                if (distance.select.value !== "any") {
+                    const km = estimatedDistance(activity.destination);
+                    if (km === null || km > Number(distance.select.value)) return false;
                 }
 
                 return true;
             });
         }
 
-        function shuffle(items) {
-            const result = [...items];
-
-            for (let i = result.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [result[i], result[j]] = [result[j], result[i]];
-            }
-
-            return result;
-        }
-
         function buildSuggestions() {
-            const maximumHours = Number(durationControl.select.value);
+            const maximumHours = Number(duration.select.value);
+            const minimumHours = maximumHours >= 8 ? 5.5 :
+                maximumHours >= 6 ? 4.5 :
+                maximumHours >= 4 ? 2.5 : 1;
+
             const groups = new Map();
 
-            getEligibleActivities().forEach(activity => {
+            eligibleActivities().forEach(activity => {
                 const destination = (activity.destination || "").trim();
-
                 if (!destination) return;
-
-                if (!groups.has(destination)) {
-                    groups.set(destination, []);
-                }
-
+                if (!groups.has(destination)) groups.set(destination, []);
                 groups.get(destination).push(activity);
             });
 
             const suggestions = [];
 
             groups.forEach((activities, destination) => {
+                const candidates = shuffle(activities).sort(
+                    (a, b) => Number(b.durationHours) - Number(a.durationHours)
+                );
+
                 const selected = [];
                 let totalHours = 0;
 
-                for (const activity of shuffle(activities)) {
-                    const duration = Number(activity.durationHours);
-
-                    if (totalHours + duration > maximumHours) continue;
+                for (const activity of candidates) {
+                    const hours = Number(activity.durationHours);
+                    if (totalHours + hours > maximumHours) continue;
 
                     selected.push(activity);
-                    totalHours += duration;
+                    totalHours += hours;
+
+                    if (totalHours >= minimumHours &&
+                        (maximumHours < 8 || selected.length >= 2)) break;
                 }
 
-                if (!selected.length) return;
+                if (totalHours < minimumHours) return;
+                if (maximumHours >= 8 && selected.length < 2) return;
 
                 suggestions.push({
                     destination,
                     region: selected[0].region || "",
                     activities: selected,
                     totalHours,
-                    distance: estimatedRoadDistance(destination)
+                    distance: estimatedDistance(destination)
                 });
             });
 
@@ -476,61 +418,36 @@
             const intro = document.createElement("p");
             intro.className = "generated-day-intro";
 
-            const formattedDate = new Date(
-                `${dateInput.value}T12:00:00`
-            ).toLocaleDateString("en-AU", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric"
-            });
+            const formattedDate = new Date(`${dateInput.value}T12:00:00`)
+                .toLocaleDateString("en-AU", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                });
 
             intro.textContent =
-                `${formattedDate} · ` +
-                `${suggestion.region ? suggestion.region + " · " : ""}` +
-                `Approximately ${suggestion.distance} km from Clontarf (estimated one-way road distance).`;
+                `${formattedDate} · ${suggestion.region ? suggestion.region + " · " : ""}` +
+                `Approximately ${suggestion.distance ?? "unknown"} km from Clontarf (estimated one-way distance).`;
 
             const activityContainer = document.createElement("div");
-
-            const selectedIds = new Set(
-                suggestion.activities.map(activity => activity.id)
-            );
+            const selectedIds = new Set(suggestion.activities.map(item => item.id));
 
             const summary = document.createElement("div");
             summary.className = "generated-day-summary";
 
             function updateSummary() {
-                const selected = suggestion.activities.filter(activity =>
-                    selectedIds.has(activity.id)
-                );
-
-                const hours = selected.reduce(
-                    (total, activity) =>
-                        total + Number(activity.durationHours || 0),
-                    0
-                );
-
-                const knownCost = selected.reduce(
-                    (total, activity) =>
-                        total + (
-                            activity.estimatedCost == null
-                                ? 0
-                                : Number(activity.estimatedCost)
-                        ),
-                    0
-                );
-
-                const unknownCosts = selected.filter(activity =>
-                    activity.estimatedCost == null
-                ).length;
+                const selected = suggestion.activities.filter(item => selectedIds.has(item.id));
+                const hours = selected.reduce((total, item) =>
+                    total + Number(item.durationHours || 0), 0);
+                const knownCost = selected.reduce((total, item) =>
+                    total + (item.estimatedCost == null ? 0 : Number(item.estimatedCost)), 0);
+                const unknownCosts = selected.filter(item => item.estimatedCost == null).length;
 
                 summary.textContent =
-                    `${selected.length} experiences selected · ` +
-                    `${hours.toFixed(1)} hours of activity · ` +
+                    `${selected.length} experiences · ${hours.toFixed(1)} hours of activity · ` +
                     `Known costs: $${knownCost.toFixed(2)} per person` +
-                    (unknownCosts
-                        ? ` · ${unknownCosts} cost(s) to confirm`
-                        : "");
+                    (unknownCosts ? ` · ${unknownCosts} cost(s) to confirm` : "");
             }
 
             suggestion.activities.forEach((activity, index) => {
@@ -540,16 +457,13 @@
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.checked = true;
-
                 checkbox.addEventListener("change", () => {
                     if (checkbox.checked) selectedIds.add(activity.id);
                     else selectedIds.delete(activity.id);
-
                     updateSummary();
                 });
 
                 const details = document.createElement("div");
-
                 const name = document.createElement("strong");
                 name.textContent = `${index + 1}. ${activity.name}`;
 
@@ -561,20 +475,18 @@
                 description.textContent = activity.description || "";
 
                 const cost = document.createElement("span");
-                cost.textContent =
-                    activity.estimatedCost == null
-                        ? "Cost to confirm"
-                        : activity.estimatedCost === 0
-                            ? "Free"
-                            : `Estimated $${activity.estimatedCost} per person`;
+                cost.textContent = activity.estimatedCost == null
+                    ? "Cost to confirm"
+                    : activity.estimatedCost === 0
+                        ? "Free"
+                        : `Estimated $${activity.estimatedCost} per person`;
 
                 const dog = document.createElement("span");
-                dog.textContent =
-                    activity.dogPolicy === "friendly"
-                        ? "Dog-friendly"
-                        : activity.dogPolicy === "restricted"
-                            ? "Dogs not permitted"
-                            : "Dog access needs verification";
+                dog.textContent = activity.dogPolicy === "friendly"
+                    ? "Dog-friendly"
+                    : activity.dogPolicy === "restricted"
+                        ? "Dogs not permitted"
+                        : "Dog access needs verification";
 
                 details.append(name, destination, description, cost, dog);
                 label.append(checkbox, details);
@@ -584,73 +496,49 @@
             const note = document.createElement("p");
             note.className = "generated-day-meta";
             note.textContent =
-                "Distance is an approximate one-way estimate from Clontarf, calculated from geographic coordinates. Actual driving distances and times may differ. Check navigation, opening hours, access restrictions and bookings before travelling.";
+                "Activity duration excludes travel and meal breaks. Check opening hours, access conditions and any booking requirements before setting off.";
 
             const saveButton = document.createElement("button");
             saveButton.type = "button";
             saveButton.className = "add-activity-button";
-            saveButton.textContent = "Save this day itinerary";
+            saveButton.textContent = "Save this itinerary";
 
             saveButton.addEventListener("click", () => {
-                if (!dateInput.value || dateInput.value < localDateString()) {
-                    message.textContent =
-                        "Choose today or a future date for your outing.";
+                if (!dateInput.value || dateInput.value < localDate()) {
+                    message.textContent = "Choose today or a future date for your outing.";
                     dateInput.focus();
                     return;
                 }
 
                 const ids = suggestion.activities
-                    .filter(activity => selectedIds.has(activity.id))
-                    .map(activity => activity.id);
+                    .filter(item => selectedIds.has(item.id))
+                    .map(item => item.id);
 
                 if (!ids.length) {
-                    message.textContent =
-                        "Select at least one experience before saving.";
+                    message.textContent = "Select at least one experience before saving.";
                     return;
                 }
 
-                const saved = AdventurePlanner.saveItinerary({
-                    date: dateInput.value,
-                    activityIds: ids
-                });
-
-                if (!saved) {
-                    message.textContent =
-                        "Unable to save the itinerary. Check your browser storage.";
+                if (!planner.saveItinerary({ date: dateInput.value, activityIds: ids })) {
+                    message.textContent = "Unable to save the itinerary. Check your browser storage.";
                     return;
                 }
 
-                message.textContent =
-                    `Your itinerary for ${formattedDate} has been saved.`;
-
+                message.textContent = `Your itinerary for ${formattedDate} has been saved.`;
                 saveButton.disabled = true;
                 saveButton.textContent = "Itinerary saved";
-
-                if (typeof renderDayPlanner === "function") {
-                    renderDayPlanner();
-                }
             });
 
             updateSummary();
-
-            card.append(
-                heading,
-                intro,
-                activityContainer,
-                summary,
-                note,
-                saveButton
-            );
-
+            card.append(heading, intro, activityContainer, summary, note, saveButton);
             results.appendChild(card);
         }
 
         function generate() {
             message.textContent = "";
 
-            if (!dateInput.value || dateInput.value < localDateString()) {
-                message.textContent =
-                    "Choose today or a future date before generating an outing.";
+            if (!dateInput.value || dateInput.value < localDate()) {
+                message.textContent = "Choose today or a future date before generating an outing.";
                 dateInput.focus();
                 return;
             }
@@ -659,22 +547,17 @@
 
             if (!suggestions.length) {
                 results.replaceChildren();
-
                 const empty = document.createElement("p");
                 empty.textContent =
-                    "No uncompleted activities match these preferences. Try increasing your distance, time or budget limits.";
-
+                    "No suitable itineraries match these preferences. Try increasing your distance, time or budget.";
                 results.appendChild(empty);
-                regenerateButton.hidden = true;
                 return;
             }
 
             displaySuggestion(suggestions[0]);
-            regenerateButton.hidden = false;
         }
 
         generateButton.addEventListener("click", generate);
-        regenerateButton.addEventListener("click", generate);
 
         dateInput.addEventListener("change", () => {
             if (results.children.length) generate();
