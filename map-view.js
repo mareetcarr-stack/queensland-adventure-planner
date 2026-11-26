@@ -4,7 +4,7 @@
 /*
  * Adventure Planner — Interactive Map
  * Leaflet + OpenStreetMap.
- * Destination coordinates are approximate, not exact attraction entrances.
+ * Coordinates identify approximate destinations, not exact entrances.
  */
 
 (() => {
@@ -52,7 +52,14 @@
         "Biggera Waters": [-27.927, 153.400],
         "Beerwah": [-26.858, 152.961],
         "Oxenford": [-27.891, 153.313],
-        "Margate": [-27.243, 153.106]
+        "Margate": [-27.243, 153.106],
+        "Nudgee Beach": [-27.347, 153.105],
+        "Coolum Beach": [-26.528, 153.091],
+        "Peregian Beach": [-26.480, 153.096],
+        "Point Danger": [-28.166, 153.548],
+        "Currumbin Valley": [-28.181, 153.420],
+        "Tallebudgera Creek": [-28.112, 153.456],
+        "Samford": [-27.372, 152.886]
     };
 
     function loadLeaflet() {
@@ -74,10 +81,7 @@
             const script = document.createElement("script");
             script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
             script.onload = resolve;
-            script.onerror = () => reject(
-                new Error("Unable to load Leaflet.")
-            );
-
+            script.onerror = () => reject(new Error("Unable to load Leaflet."));
             document.head.appendChild(script);
         });
 
@@ -85,20 +89,10 @@
     }
 
     function initialise() {
-        /*
-         * AdventurePlanner is declared as a top-level const in app.js.
-         * It is accessible here directly, but not through window.
-         */
-        if (typeof AdventurePlanner === "undefined") {
-            console.error(
-                "Adventure map could not initialise: AdventurePlanner is unavailable."
-            );
-            return;
-        }
+        if (typeof AdventurePlanner === "undefined") return;
+        if (document.getElementById("adventure-map-section")) return;
 
         const planner = AdventurePlanner;
-
-        if (document.getElementById("adventure-map-section")) return;
 
         const section = document.createElement("section");
         section.className = "feature";
@@ -109,12 +103,12 @@
 
         const intro = document.createElement("p");
         intro.textContent =
-            "Explore your activity library geographically. Select a marker to see experiences at that destination and mark them complete without leaving the map.";
+            "Explore your experiences geographically. Select a destination pin to view activities and update your completion record.";
 
         const controls = document.createElement("div");
         controls.className = "map-view-controls";
 
-        function makeFilter(labelText, id) {
+        function createFilter(labelText, id) {
             const label = document.createElement("label");
             label.className = "filter-field";
 
@@ -130,16 +124,13 @@
             return select;
         }
 
-        const regionFilter = makeFilter("Region", "map-region-filter");
-        const categoryFilter = makeFilter(
-            "Experience type",
-            "map-category-filter"
-        );
+        const regionFilter = createFilter("Region", "map-region-filter");
+        const categoryFilter = createFilter("Experience type", "map-category-filter");
 
-        const mapMessage = document.createElement("p");
-        mapMessage.className = "map-view-message";
-        mapMessage.setAttribute("aria-live", "polite");
-        mapMessage.textContent = "Loading map...";
+        const message = document.createElement("p");
+        message.className = "map-view-message";
+        message.setAttribute("aria-live", "polite");
+        message.textContent = "Loading map...";
 
         const mapContainer = document.createElement("div");
         mapContainer.id = "adventure-map";
@@ -147,30 +138,17 @@
         const legend = document.createElement("p");
         legend.className = "map-view-legend";
         legend.textContent =
-            "Map pins show approximate destination locations, not exact attraction entrances or verified driving routes.";
+            "Pins show approximate destination locations, not exact attraction entrances or verified driving routes.";
 
-        section.append(
-            heading,
-            intro,
-            controls,
-            mapMessage,
-            mapContainer,
-            legend
-        );
+        section.append(heading, intro, controls, message, mapContainer, legend);
 
         const main = document.querySelector("main");
-
-        if (main) {
-            main.appendChild(section);
-        } else {
-            document.body.appendChild(section);
-        }
+        if (main) main.appendChild(section);
+        else document.body.appendChild(section);
 
         const style = document.createElement("style");
         style.textContent = `
-            #adventure-map-section {
-                margin-top: 24px;
-            }
+            #adventure-map-section { margin-top: 24px; }
 
             .map-view-controls {
                 display: grid;
@@ -246,39 +224,22 @@
                 font-size: .8rem;
             }
 
-            .map-popup-activity button:hover {
-                background: #e2eee7;
-            }
-
             .map-popup-activity .completed-label {
                 color: #53715f;
                 font-size: .8rem;
             }
 
             @media (max-width: 600px) {
-                .map-view-controls {
-                    grid-template-columns: 1fr;
-                }
-
-                #adventure-map {
-                    height: 430px;
-                }
+                .map-view-controls { grid-template-columns: 1fr; }
+                #adventure-map { height: 430px; }
             }
         `;
 
         document.head.appendChild(style);
 
-        const allActivities = planner.getActivities();
+        const activities = planner.getActivities();
 
-        const regions = [...new Set(
-            allActivities.map(activity => activity.region).filter(Boolean)
-        )].sort();
-
-        const categories = [...new Set(
-            allActivities.flatMap(activity => activity.category || [])
-        )].sort();
-
-        function populateFilter(select, firstLabel, values, format) {
+        function populate(select, firstLabel, values, format) {
             const first = document.createElement("option");
             first.value = "all";
             first.textContent = firstLabel;
@@ -292,12 +253,16 @@
             });
         }
 
-        populateFilter(regionFilter, "All regions", regions);
+        populate(
+            regionFilter,
+            "All regions",
+            [...new Set(activities.map(a => a.region).filter(Boolean))].sort()
+        );
 
-        populateFilter(
+        populate(
             categoryFilter,
             "All experience types",
-            categories,
+            [...new Set(activities.flatMap(a => a.category || []))].sort(),
             value => value.replaceAll("-", " ")
                 .replace(/\b\w/g, character => character.toUpperCase())
         );
@@ -310,13 +275,12 @@
 
             markerLayer.clearLayers();
 
-            const currentActivities = planner.getActivities();
             const groups = new Map();
 
-            currentActivities.forEach(activity => {
+            planner.getActivities().forEach(activity => {
                 const destination = activity.destination;
 
-                if (!destination || !LOCATIONS[destination]) return;
+                if (!LOCATIONS[destination]) return;
 
                 if (
                     regionFilter.value !== "all" &&
@@ -328,14 +292,11 @@
                     !(activity.category || []).includes(categoryFilter.value)
                 ) return;
 
-                if (!groups.has(destination)) {
-                    groups.set(destination, []);
-                }
-
+                if (!groups.has(destination)) groups.set(destination, []);
                 groups.get(destination).push(activity);
             });
 
-            let markerCount = 0;
+            let count = 0;
             let activityCount = 0;
 
             groups.forEach((items, destination) => {
@@ -379,14 +340,14 @@
                 marker.bindPopup(popup);
                 marker.addTo(markerLayer);
 
-                markerCount++;
+                count++;
                 activityCount += items.length;
             });
 
-            mapMessage.textContent =
-                `${markerCount} destinations shown · ${activityCount} matching experiences.`;
+            message.textContent =
+                `${count} destinations shown · ${activityCount} matching experiences.`;
 
-            if (markerCount) {
+            if (count) {
                 const bounds = markerLayer.getBounds();
 
                 if (bounds.isValid()) {
@@ -403,10 +364,7 @@
 
         loadLeaflet()
             .then(() => {
-                map = L.map(mapContainer).setView(
-                    [-27.55, 152.95],
-                    8
-                );
+                map = L.map(mapContainer).setView([-27.55, 152.95], 8);
 
                 L.tileLayer(
                     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -421,13 +379,12 @@
                 renderMarkers();
 
                 setTimeout(() => map.invalidateSize(), 150);
-
                 console.log("Adventure map initialised.");
             })
             .catch(error => {
                 console.error("Adventure map error:", error);
-                mapMessage.textContent =
-                    "The map could not be loaded. Check your internet connection and reload the page.";
+                message.textContent =
+                    "The map could not be loaded. Check your connection and reload.";
             });
     }
 
