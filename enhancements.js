@@ -5,11 +5,11 @@
  * Loaded after the page's existing scripts. Keeps the existing data schema
  * and localStorage key; archived itineraries are represented by ID only.
  *
- * My Adventures:
- * - Page order is handled by page-refinements.js
- * - "Experiences I've Completed" and "Saved Day Itineraries" live on
- *   #home-dashboard; matching groups on #my-adventures-dashboard are hidden
- * - Archive controls attach to dashboard itinerary cards when available
+ * My Adventures page:
+ * - Order is handled by page-refinements.js
+ * - Completed experiences + saved itineraries live on #home-dashboard
+ * - #my-adventures-dashboard is hidden (avoids empty duplicate card)
+ * - Archive panel attaches to #home-dashboard
  */
 
 (() => {
@@ -277,7 +277,9 @@
                 const joined =
                     names.length === 2
                         ? `${names[0]} and ${names[1]}`
-                        : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+                        : `${names.slice(0, -1).join(", ")} and ${
+                              names[names.length - 1]
+                          }`;
 
                 narrative =
                     `Make a day of exploring ${
@@ -286,7 +288,9 @@
                     `${first.description ? ` — ${first.description}` : ""}. ` +
                     `${
                         middle.length
-                            ? `Continue on to ${middle.map(item => item.name).join(" and ")}, then `
+                            ? `Continue on to ${middle
+                                  .map(item => item.name)
+                                  .join(" and ")}, then `
                             : "From there, "
                     }` +
                     `finish with ${last.name.toLowerCase()}` +
@@ -332,82 +336,33 @@
         const historyDashboard = document.getElementById("my-adventures-dashboard");
         const homeDashboard = document.getElementById("home-dashboard");
 
-        // Hide duplicate groups on the lower history dashboard —
-        // these now live on #home-dashboard.
+        // Hide the old lower history block so it does not leave an empty card
+        // above "Add an Activity". Content now lives on #home-dashboard.
         if (historyDashboard) {
-            const completedGroup = [
-                ...historyDashboard.querySelectorAll(".adventure-dashboard-group")
-            ].find(group =>
-                /Experiences I've Completed/.test(
-                    group.querySelector("h3")?.textContent || ""
-                )
-            );
-            if (completedGroup) completedGroup.hidden = true;
-
-            const holidayGroup = [
-                ...historyDashboard.querySelectorAll(".adventure-dashboard-group")
-            ].find(group =>
-                /Holiday Plans/.test(group.querySelector("h3")?.textContent || "")
-            );
-            if (holidayGroup) holidayGroup.remove();
-
-            const customGroup = [
-                ...historyDashboard.querySelectorAll(".adventure-dashboard-group")
-            ].find(group =>
-                /Personal Activities/.test(
-                    group.querySelector("h3")?.textContent || ""
-                )
-            );
-            if (customGroup) customGroup.remove();
-
-            // Hide the active itineraries list (duplicate of dashboard),
-            // but keep the element available for archive bookkeeping.
-            const itineraryGroup = [
-                ...historyDashboard.querySelectorAll(".adventure-dashboard-group")
-            ].find(group =>
-                /Saved Day Itineraries/.test(
-                    group.querySelector("h3")?.textContent || ""
-                )
-            );
-            if (itineraryGroup) itineraryGroup.hidden = true;
-
-            // Hide the lower dashboard's own heading/stats so the page
-            // doesn't show a second "My Adventures" block of summary cards.
-            const historyHeading = historyDashboard.querySelector(":scope > h2");
-            const historyIntro = historyDashboard.querySelector(":scope > p");
-            const historyStats = historyDashboard.querySelector(
-                ".adventure-dashboard-stats"
-            );
-            if (historyHeading) historyHeading.hidden = true;
-            if (historyIntro) historyIntro.hidden = true;
-            if (historyStats) historyStats.hidden = true;
+            historyDashboard.hidden = true;
         }
+
+        if (!homeDashboard) return;
 
         const archiveIds = getArchiveIds();
         const itineraries = [...(planner.data.savedItineraries || [])].sort(
             (a, b) => (b.date || "").localeCompare(a.date || "")
         );
 
-        // Prefer itinerary cards on the main dashboard.
-        const itineraryCardsRoot =
-            homeDashboard?.querySelector(".dashboard-itineraries-section") ||
-            historyDashboard;
+        // Attach archive buttons to itinerary cards on the main dashboard.
+        const itinerarySection = homeDashboard.querySelector(
+            ".dashboard-itineraries-section"
+        );
 
-        if (itineraryCardsRoot) {
+        if (itinerarySection) {
             const cards = [
-                ...itineraryCardsRoot.querySelectorAll(".adventure-history-card")
-            ].filter(
-                card =>
-                    card.id?.startsWith("saved-itinerary-") ||
-                    card.closest(".dashboard-itineraries-section")
-            );
+                ...itinerarySection.querySelectorAll(".adventure-history-card")
+            ];
 
-            // Match cards to itineraries by id when possible.
             cards.forEach(card => {
                 const idFromDom = card.id?.replace(/^saved-itinerary-/, "");
                 const itinerary =
                     itineraries.find(item => item.id === idFromDom) || null;
-
                 if (!itinerary) return;
 
                 card.hidden = archiveIds.has(itinerary.id);
@@ -435,12 +390,8 @@
             });
         }
 
-        // Archive panel: attach under the home dashboard when present,
-        // otherwise under the history dashboard.
-        const archiveParent = homeDashboard || historyDashboard;
-        if (!archiveParent) return;
-
-        let archiveGroup = archiveParent.querySelector(
+        // Archive panel under the main dashboard.
+        let archiveGroup = homeDashboard.querySelector(
             ".archived-itineraries-group"
         );
         if (!archiveGroup) {
@@ -448,7 +399,7 @@
                 "section",
                 "adventure-dashboard-group archived-itineraries-group"
             );
-            archiveParent.appendChild(archiveGroup);
+            homeDashboard.appendChild(archiveGroup);
         }
 
         archiveGroup.replaceChildren(make("h3", "", "Archived Itineraries"));
@@ -467,6 +418,7 @@
         );
 
         const list = make("div", "archived-itineraries-list");
+
         if (!archived.length) {
             list.appendChild(
                 make(
@@ -481,6 +433,7 @@
                     "article",
                     "adventure-history-card archived-itinerary-card"
                 );
+
                 const date = itinerary.date
                     ? new Date(`${itinerary.date}T12:00:00`).toLocaleDateString(
                           "en-AU",
@@ -497,7 +450,9 @@
 
                 const names = (itinerary.activityIds || [])
                     .map(id =>
-                        planner.getActivities().find(activity => activity.id === id)
+                        planner
+                            .getActivities()
+                            .find(activity => activity.id === id)
                     )
                     .filter(Boolean)
                     .map(activity => activity.name);
@@ -506,7 +461,11 @@
                     make("p", "", names.join(" · ") || "No activities recorded")
                 );
 
-                const restore = make("button", "", "Restore to saved itineraries");
+                const restore = make(
+                    "button",
+                    "",
+                    "Restore to saved itineraries"
+                );
                 restore.type = "button";
                 restore.addEventListener("click", () => {
                     const updated = getArchiveIds();
@@ -520,27 +479,6 @@
 
         details.appendChild(list);
         archiveGroup.appendChild(details);
-
-        // Keep active itinerary count on the lower stats in sync if present.
-        if (historyDashboard) {
-            const statCards = [
-                ...historyDashboard.querySelectorAll(
-                    ".adventure-dashboard-stats .dashboard-stat-card"
-                )
-            ];
-            if (statCards[1]) {
-                const activeCount = itineraries.filter(
-                    item => !archiveIds.has(item.id)
-                ).length;
-                const value = statCards[1].querySelector(".dashboard-stat-value");
-                const label = statCards[1].querySelector(".dashboard-stat-label");
-                const detail = statCards[1].querySelector(".dashboard-stat-detail");
-                if (value) value.textContent = String(activeCount);
-                if (label) label.textContent = "Saved day itineraries";
-                if (detail) detail.textContent = "Active plans";
-            }
-            if (statCards[2]) statCards[2].remove();
-        }
     }
 
     function applyRefinements() {
