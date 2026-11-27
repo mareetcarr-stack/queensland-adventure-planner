@@ -200,11 +200,7 @@
 
             const customActivities = planner.data.activities || [];
 
-            stats.replaceChildren(
-                makeStat(completed.length, "Experiences completed", "Places you've explored"),
-                makeStat(itineraries.length, "Saved day itineraries", "Your planned days out"),
-                makeStat(holidays.length, "Saved holidays", "Multi-day trips")
-            );
+            
 
             completedContainer.replaceChildren(
                 makeElement("h3", "", "✓ Experiences I've Completed")
