@@ -40,7 +40,7 @@
         customContainer.className = "adventure-dashboard-group";
 
         section.append(
-            heading, intro, stats,
+            heading, intro,
             completedContainer, itineraryContainer,
             holidayContainer, customContainer
         );
