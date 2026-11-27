@@ -1,4 +1,4 @@
-"use strict";
+"use  strict";
 
 /*
  * Adventure Planner — consolidated interface refinements.
